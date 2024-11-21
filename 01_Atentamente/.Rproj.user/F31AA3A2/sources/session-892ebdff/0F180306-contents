@@ -1,0 +1,98 @@
+
+remove(list = ls())
+
+library(RSQLite)
+
+#-----------------------------------------------------------------------------------------------------------------------
+# Crear la conexión a la base de datos SQLite (si no existe, se crea en automático)
+con <- dbConnect(RSQLite::SQLite(), dbname = "DB_prueba.db")
+
+# Crear la tabla con 5 columnas directamente
+dbExecute(con, "
+  CREATE TABLE tabla_prueba (
+    id INTEGER PRIMARY KEY,      -- Clave primaria
+    nombre TEXT NOT NULL,        -- Nombre (texto)
+    edad INTEGER,                -- Edad (entero)
+    correo TEXT,                 -- Correo electrónico (texto)
+    fecha_registro DATE          -- Fecha de registro (fecha)
+  )
+")
+
+# Verificar que la tabla se haya creado correctamente
+print(dbListTables(con)) # Lista las tablas existentes
+
+# Consultar los datos de la tabla
+consulta <- dbGetQuery(con,"SELECT * FROM tabla_prueba")
+print(consulta)
+
+# Insertar tres registros directamente con comandos SQL
+dbExecute(con, "
+  INSERT INTO tabla_prueba (id, nombre, edad, correo, fecha_registro)
+  VALUES 
+    (1, 'Juan', 25, 'juan@mail.com', '2024-11-20'),
+    (2, 'María', 30, 'maria@mail.com', '2024-11-21'),
+    (3, 'Pedro', 28, 'pedro@mail.com', '2024-11-22');
+")
+
+# Cerrar la conexión a la base de datos
+dbDisconnect(con)
+
+#-----------------------------------------------------------------------------------------------------------------------
+# BASE ATENTAMENTE
+#-----------------------------------------------------------------------------------------------------------------------
+# 1ra vez
+
+dirData <- "data/"
+nombreArchivo <- "02 Base de Monitoreo_EpB Coahuila 2024-2025 SEDU Básica_Media Superior"
+
+# Leer el archivo
+dfDatos <- read.csv(paste0(dirData,nombreArchivo,".csv"),header = TRUE,sep = ";")
+
+# Crear base datos y conexion
+nombreDB <- "DB_Atentamente"
+con <- dbConnect(RSQLite::SQLite(), dbname = paste0(nombreDB,".db"))
+
+# Creamos la tabla a partir del df
+dbWriteTable(
+  conn = con, 
+  name = "base_script",       # Nombre de la tabla que quieres crear
+  value = dfDatos,   # Data frame que se usará como base
+  overwrite = TRUE,  # Sobrescribe si la tabla ya existe
+  row.names = FALSE  # No guarda los nombres de las filas del data frame
+)
+
+# Paso 3: Verificar que la tabla se haya creado correctamente
+print(dbListTables(con))                 # Lista las tablas existentes
+dfBaseScript <- dbGetQuery(con,"SELECT * FROM base_script")
+
+# Cerrar la conexión
+dbDisconnect(con)
+#-----------------------------------------------------------------------------------------------------------------------
+
+# Con información ya existente
+# Crear base datos y conexion
+nombreDB <- "DB_Atentamente"
+con <- dbConnect(RSQLite::SQLite(), dbname = paste0(nombreDB,".db"))
+
+dirData <- "data/"
+nombreArchivo <- "02 Base de Monitoreo_EpB Coahuila 2024-2025 SEDU Básica_Media Superior"
+
+# Leer el archivo
+dfDatos_Nuevo <- read.csv(paste0(dirData,nombreArchivo,".csv"),header = TRUE,sep = ";")
+
+dfDatos_Antiguo <- dbGetQuery(con,"SELECT * FROM base_script")
+
+# Información nueva a guardar
+dfDatos_Sqlite <- rbind(dfDatos_Antiguo,dfDatos_Nuevo)
+
+# Creamos la tabla a partir del df
+dbWriteTable(
+  conn = con, 
+  name = "base_script",       # Nombre de la tabla que quieres crear
+  value = dfDatos_Sqlite,   # Data frame que se usará como base
+  overwrite = TRUE,  # Sobrescribe si la tabla ya existe
+  row.names = FALSE  # No guarda los nombres de las filas del data frame
+)
+
+# Cerrar la conexión
+dbDisconnect(con)
