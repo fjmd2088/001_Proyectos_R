@@ -94,5 +94,10 @@ dbWriteTable(
   row.names = FALSE  # No guarda los nombres de las filas del data frame
 )
 
+
+# Agregar a la infromación ya existente sin leer lo que ya contiene la base
+dbAppendTable(con,"base_script",value = dfDatos_Nuevo)
+df2 <- dbGetQuery(con,"SELECT * FROM base_script")
+
 # Cerrar la conexión
 dbDisconnect(con)
