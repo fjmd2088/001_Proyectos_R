@@ -12,13 +12,13 @@
     "properties": {
         "expression": "tr_expediente",
         "caption": "tr_expediente",
-        "totalObservations": "6",
-        "displayedObservations": "6",
+        "totalObservations": "34",
+        "displayedObservations": "34",
         "variables": "77",
-        "cacheKey": "D88E8287",
+        "cacheKey": "A1E123D6",
         "object": "tr_expediente",
         "environment": "",
-        "contentUrl": "grid_resource/gridviewer.html?env=&obj=tr_expediente&cache_key=D88E8287&max_display_columns=50",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=tr_expediente&cache_key=A1E123D6&max_display_columns=50",
         "preview": "0",
         "source_window_id": "",
         "Source": "Source"
