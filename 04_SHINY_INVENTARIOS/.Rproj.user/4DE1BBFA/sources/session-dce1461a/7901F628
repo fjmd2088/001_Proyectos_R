@@ -1,0 +1,27 @@
+{
+    "id": "7901F628",
+    "path": "~/001_Programacion_FJMD/01_R/001_Proyectos_R/04_SHINY_INVENTARIOS/app.R",
+    "project_path": "app.R",
+    "type": "r_source",
+    "hash": "3615294641",
+    "contents": "",
+    "dirty": false,
+    "created": 1735996615876.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "333,4",
+        "scrollLine": "319"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1736044967,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1736044967527,
+    "read_only": false,
+    "read_only_alternatives": []
+}

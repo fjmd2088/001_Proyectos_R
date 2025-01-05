@@ -1,0 +1,27 @@
+{
+    "id": "5D464A24",
+    "path": "~/001_Programacion_FJMD/01_R/001_Proyectos_R/04_SHINY_INVENTARIOS/pruebas.R",
+    "project_path": "pruebas.R",
+    "type": "r_source",
+    "hash": "734203945",
+    "contents": "",
+    "dirty": false,
+    "created": 1735997704365.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "8,35",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1736109245,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1736109245520,
+    "read_only": false,
+    "read_only_alternatives": []
+}

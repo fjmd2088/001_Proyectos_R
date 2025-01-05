@@ -1,0 +1,13 @@
+name: 04_SHINY_INVENTARIOS
+title: 04_SHINY_INVENTARIOS
+username: fjmd
+account: fjmd
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 13663466
+bundleId: 9606010
+url: https://fjmd.shinyapps.io/04_SHINY_INVENTARIOS/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: Imagenes/LOGO_GBG.png|Imagenes/LOGO_PP.png|LOGO_PP.png
