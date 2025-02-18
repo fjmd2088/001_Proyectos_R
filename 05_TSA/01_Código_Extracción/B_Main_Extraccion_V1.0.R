@@ -49,9 +49,9 @@ tribunales <- str_trim(catalogo$Nombre.del.órgano.jurisdiccional)
 #---------------------------------------------------------------------------------------------------
 # Mes y año a analizar
 # MESES <- c("01_ENERO","02_FEBRERO","03_MARZO","04_ABRIL","05_MAYO","06_JUNIO","07_JULIO","08_AGOSTO","09_SEPTIEMBRE","10_OCTUBRE","11_NOVIEMBRE","12_DICIEMBRE") # ***** MODIFICAR *****
- MESES <- c("02_FEBRERO") # ***** MODIFICAR SOLO ANALIZAR UN MES*****
+ MESES <- c("01_ENERO") # ***** MODIFICAR SOLO ANALIZAR UN MES*****
 
-ANIO <- 2023 # ***** MODIFICAR *****
+ANIO <- 2024 # ***** MODIFICAR *****
 
 
 # Se extrae informacion

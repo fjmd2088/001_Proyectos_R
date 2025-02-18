@@ -1,9 +1,9 @@
 {
     "id": "02A78867",
-    "path": "D:/OneDrive - INEGI/05_SDMIG/2024/04_Tribunal_Agrario/01_Liberaciones/16feb2024/01_Reportes_estadisticos_15feb2024/B_Main_Extraccion_V1.0.R",
+    "path": "D:/01_Programacion_FJMD/R/001_Proyectos_R/05_TSA/01_Código_Extracción/B_Main_Extraccion_V1.0.R",
     "project_path": "B_Main_Extraccion_V1.0.R",
     "type": "r_source",
-    "hash": "2501152487",
+    "hash": "3316092686",
     "contents": "",
     "dirty": false,
     "created": 1708551287549.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "13,17",
-        "scrollLine": "0"
+        "cursorPosition": "100,4",
+        "scrollLine": "86"
     },
     "folds": "",
-    "lastKnownWriteTime": 1709675647,
+    "lastKnownWriteTime": 1738687162,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1709675647625,
+    "last_content_update": 1738687162964,
     "read_only": false,
     "read_only_alternatives": []
 }
