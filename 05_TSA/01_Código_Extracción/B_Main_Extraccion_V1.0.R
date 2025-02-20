@@ -67,8 +67,8 @@ if(extraer == 1){
   #---------------------------------------------------------------------------------------------------
   # BASES AUXILIARES
   #---------------------------------------------------------------------------------------------------
-  Ubicaciones <- openxlsx::read.xlsx(paste0(dir_cat,"Ubicacion_variables_ED_2024_V1.0.xlsx"),
-                                     sheet = "Hoja1",colNames = TRUE) # ***** MODIFICAR *****
+  Ubicaciones <- openxlsx::read.xlsx(paste0(dir_cat,"Ubicacion_variables_ED_2025_V1.0.xlsx"),
+                                     sheet = "Sheet 1",colNames = TRUE) # ***** MODIFICAR *****
   
   # SE EXTRAE LA INFORMACION
   source("C_Extraccion_informacion_V1.0.R")
