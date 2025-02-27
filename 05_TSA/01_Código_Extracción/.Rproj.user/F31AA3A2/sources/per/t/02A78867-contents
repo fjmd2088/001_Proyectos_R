@@ -39,7 +39,7 @@ dir_res_ed <- paste0(dir_res,"Estructura_Datos/")
 #---------------------------------------------------------------------------------------------------
 # CARGA DE ARCHIVOS
 #---------------------------------------------------------------------------------------------------
-catalogo <- openxlsx::read.xlsx(paste0(dir_cat,"Catalogo_Organo_Jurisdiccional_2023",".xlsx"),
+catalogo <- openxlsx::read.xlsx(paste0(dir_cat,"Catalogo_Organo_Jurisdiccional_2024",".xlsx"),
                                 sheet = "Catalogos",colNames = TRUE) # ***** MODIFICAR *****
 # Se extraen los tribunales
 tribunales <- str_trim(catalogo$Nombre.del.órgano.jurisdiccional)
@@ -49,7 +49,7 @@ tribunales <- str_trim(catalogo$Nombre.del.órgano.jurisdiccional)
 #---------------------------------------------------------------------------------------------------
 # Mes y año a analizar
 # MESES <- c("01_ENERO","02_FEBRERO","03_MARZO","04_ABRIL","05_MAYO","06_JUNIO","07_JULIO","08_AGOSTO","09_SEPTIEMBRE","10_OCTUBRE","11_NOVIEMBRE","12_DICIEMBRE") # ***** MODIFICAR *****
- MESES <- c("01_ENERO") # ***** MODIFICAR SOLO ANALIZAR UN MES*****
+ MESES <- c("01_ENERO","12_DICIEMBRE") # ***** MODIFICAR SOLO ANALIZAR UN MES*****
 
 ANIO <- 2024 # ***** MODIFICAR *****
 
@@ -75,7 +75,7 @@ if(extraer == 1){
 
   }else{
   # SE CARGA LA ED PARA LA EXTRACCION
-    files.archivo <- "01_Estructura_Datos_Justicia_Agraria_2024_Extraccion_Variables_25mar2024" # ***** MODIFICAR *****
+    files.archivo <- "04_Estructura_Datos_Justicia_Agraria_CNIJF2025_VF(20feb2025)_Extraccion_Variables" # ***** MODIFICAR *****
     
   # SE REALIZA CONCENTRADO DE INFORMACICION
     
@@ -102,14 +102,14 @@ if(extraer == 1){
     data <- fread(db_analizar)
     
   # SE GENERAN LOS ARCHIVOS PARA LA ESTRUCTURA DE DATOS---------------------------------------------
-    source("01_ED_INGRESOS_V1.0.R")
+    # source("01_ED_INGRESOS_V1.0.R")
     source("02_ED_TRAMITE_V1.0.R")
-    source("03_ED_CONCLUSIONES_V1.0.R")
-    source("04_ED_ACTOS_PROCESALES_V1.0.R")
-    source("05_ED_EJECUTORIAS_V1.0.R")
-    source("06_ED_EXHORTOS_V1.0.R")
-    source("07_ED_HIDROCARBUROS_V1.0.R")
-    source("08_ED_CONTROL_V1.0.R")
+    # source("03_ED_CONCLUSIONES_V1.0.R")
+    # source("04_ED_ACTOS_PROCESALES_V1.0.R")
+    # source("05_ED_EJECUTORIAS_V1.0.R")
+    # source("06_ED_EXHORTOS_V1.0.R")
+    # source("07_ED_HIDROCARBUROS_V1.0.R")
+    # source("08_ED_CONTROL_V1.0.R")
 }
 
 Sys.time() - ti

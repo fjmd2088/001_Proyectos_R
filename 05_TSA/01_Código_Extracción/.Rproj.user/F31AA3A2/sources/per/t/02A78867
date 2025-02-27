@@ -3,7 +3,7 @@
     "path": "D:/01_Programacion_FJMD/R/001_Proyectos_R/05_TSA/01_Código_Extracción/B_Main_Extraccion_V1.0.R",
     "project_path": "B_Main_Extraccion_V1.0.R",
     "type": "r_source",
-    "hash": "2049634539",
+    "hash": "2706292324",
     "contents": "",
     "dirty": false,
     "created": 1708551287549.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "80,4",
-        "scrollLine": "70"
+        "cursorPosition": "76,37",
+        "scrollLine": "67"
     },
     "folds": "",
-    "lastKnownWriteTime": 1740071459,
+    "lastKnownWriteTime": 1740601081,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1740071459571,
+    "last_content_update": 1740601081861,
     "read_only": false,
     "read_only_alternatives": []
 }
