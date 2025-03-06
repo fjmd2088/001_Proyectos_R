@@ -1,9 +1,9 @@
 {
     "id": "02A78867",
-    "path": "D:/01_Programacion_FJMD/R/001_Proyectos_R/05_TSA/01_Código_Extracción/B_Main_Extraccion_V1.0.R",
-    "project_path": "B_Main_Extraccion_V1.0.R",
+    "path": "D:/01_Programacion_FJMD/R/001_Proyectos_R/05_TSA/01_Código_Extracción/B_Main_Extraccion_V1.1.R",
+    "project_path": "B_Main_Extraccion_V1.1.R",
     "type": "r_source",
-    "hash": "1599700414",
+    "hash": "335542170",
     "contents": "",
     "dirty": false,
     "created": 1708551287549.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "73,43",
-        "scrollLine": "59"
+        "cursorPosition": "116,30",
+        "scrollLine": "94"
     },
     "folds": "",
-    "lastKnownWriteTime": 1741198846,
+    "lastKnownWriteTime": 1741296851,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1741198846980,
+    "last_content_update": 1741296851678,
     "read_only": false,
     "read_only_alternatives": []
 }

@@ -1,5 +1,7 @@
 
-# remove(list = ls())
+# CODIGO QUE EXTRAE LAS VARIABLES DEL ETIQUETADO DEL REPORTE ESTADÍSTICO
+
+remove(list = ls())
 
 # Se cargan librerias
 library(readxl)
@@ -10,15 +12,17 @@ library(tidyr)
 library(data.table)
 library(openxlsx)
 
-
 # Directorios
 DIR_ED_ETIQUETADO <- "06_ED_Etiquetado/"
 DIR_CATALOGO <- "03_Catalogo/"
 
 # Variables
-NOMBRE_ED_ETIQUETADO <- "EST-34_Ejercicio2025" # Modificar dependiendo el ejercicio
+# ***** MODIFICAR: dependiendo el ejercicio *****
+ANIO <- 2024
+NOMBRE_ED_ETIQUETADO <- paste0("EST-34_Ejercicio",ANIO) 
 HOJAS_INVOLUCRADAS <- c("Hoja1","Hoja2","Hoja3","Hoja4","Hoja5","Hoja6","Hoja7","Hoja8",
                         "Hoja9","Hoja11")
+
 
 # Carga informacion
 
@@ -45,7 +49,7 @@ for(i in 1:length(HOJAS_INVOLUCRADAS)){
   
   # Convertir el dataframe a formato largo
   coord_variables <- raw_ed_etiquetado %>%
-    mutate(Fila = row_number()) %>%
+    mutate(Fila = dplyr::row_number()) %>%
     mutate(across(everything(), as.character)) %>%  # Convertir todas las columnas a carácter
     pivot_longer(cols = -Fila, names_to = "Columna", values_to = "ID") %>%
     filter(str_detect(ID, paste0("^",PATRON_I))) %>%  # Filtrar solo las coincidencias
@@ -69,7 +73,7 @@ CATALOGO_VARIABLES <- CATALOGO_VARIABLES %>%
 
 
 write.xlsx(CATALOGO_VARIABLES,
-           paste0(DIR_CATALOGO,"Ubicacion_variables_ED_2025_V1.0",".xlsx"),
+           paste0(DIR_CATALOGO,"Ubicacion_variables_ED_",ANIO,"_V1.0",".xlsx"),
            overwrite = TRUE)
 
 

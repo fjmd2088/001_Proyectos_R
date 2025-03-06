@@ -20,7 +20,7 @@ CRUCE <- left_join(ORIGINAL,catalogo,by = c("Distrito"))
 
 CRUCE$Periodo <- paste0(CRUCE$Mes,"/",ANIO)
 
-fwrite(CRUCE,paste0(dir_res,"01_CONCENTRADO_ORIGINAL_RE_",ANIO,".csv")) # SE GUARDA LA INFORMACION INTACTA
+fwrite(CRUCE,paste0(dir_res,"01_CONCENTRADO_INF_ORIGINAL_RE_",ANIO,".csv")) # SE GUARDA LA INFORMACION INTACTA
 
 #--------------------------------------------------------------------------------------------------------
 # Modificaciones sobre los tribunales
@@ -34,7 +34,7 @@ CRUCE2$Periodo <- paste0(CRUCE2$Mes,"/",ANIO)
 
 source("G_Modificaciones_TUA_2.R")
 
-fwrite(CRUCE2,paste0(dir_res,"02_CONCENTRADO_MODIFICADO_RE_",ANIO,".csv"))
+# fwrite(CRUCE2,paste0(dir_res,"02_CONCENTRADO_MODIFICADO_RE_",ANIO,".csv"))
 
 # --------------------------------------------------------------------------------------------------
 # ANALISIS ADICIONAL
