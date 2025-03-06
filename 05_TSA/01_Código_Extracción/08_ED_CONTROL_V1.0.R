@@ -6,8 +6,8 @@ AUX1 <- HOJA_INGRESOS %>% plotly::group_by(`Clave del órgano jurisdiccional`) %
                                                                                                     "Expedientes recibidos" = sum(`Subtotal de expedientes  recibidos `,na.rm=TRUE),
                                                                                                     "Demandas ingresadas" = sum(`Subtotal de demandas promovidas`,na.rm=TRUE))
 
-
-AUX2 <- HOJA_TRAMITE %>% plotly::select(3,4,79) %>%
+# 84: Total de asuntos en trámite   
+AUX2 <- HOJA_TRAMITE %>% plotly::select(3,4,84) %>%
   plotly::filter(`Periodo de reporte de la información (mes/año)` == paste0("Diciembre/",ANIO)) %>% plotly::select(-`Periodo de reporte de la información (mes/año)`)
 
 AUX3 <- HOJA_CONCLUSIONES %>% plotly::select(3,4,5) %>%

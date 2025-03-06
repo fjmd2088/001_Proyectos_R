@@ -14,7 +14,7 @@ library(plotly)
 library(openxlsx)
 library(plyr)
 
-options(warn = -1) # Desactivar todas las advertencias, 0 para activar
+# options(warn = -1) # Desactivar todas las advertencias, 0 para activar
 
 ti <- Sys.time()
 
@@ -102,14 +102,14 @@ if(extraer == 1){
     data <- fread(db_analizar)
     
   # SE GENERAN LOS ARCHIVOS PARA LA ESTRUCTURA DE DATOS---------------------------------------------
-    # source("01_ED_INGRESOS_V1.0.R")
+    source("01_ED_INGRESOS_V1.0.R")
     source("02_ED_TRAMITE_V1.0.R")
-    # source("03_ED_CONCLUSIONES_V1.0.R")
-    # source("04_ED_ACTOS_PROCESALES_V1.0.R")
-    # source("05_ED_EJECUTORIAS_V1.0.R")
-    # source("06_ED_EXHORTOS_V1.0.R")
-    # source("07_ED_HIDROCARBUROS_V1.0.R")
-    # source("08_ED_CONTROL_V1.0.R")
+    source("03_ED_CONCLUSIONES_V1.0.R")
+    source("04_ED_ACTOS_PROCESALES_V1.0.R")
+    source("05_ED_EJECUTORIAS_V1.0.R")
+    source("06_ED_EXHORTOS_V1.0.R")
+    source("07_ED_HIDROCARBUROS_V1.0.R")
+    source("08_ED_CONTROL_V1.0.R")
 }
 
 Sys.time() - ti
