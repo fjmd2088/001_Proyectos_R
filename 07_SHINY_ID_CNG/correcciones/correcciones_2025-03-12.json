@@ -1,0 +1,19 @@
+[
+  {
+    "CNG": "CNSIPEE",
+    "tipo_infra": "CP",
+    "ID_2024": "CP_02000E0004",
+    "Ent": "BAJA CALIFORNIA",
+    "Mun": "MEXICALI",
+    "nom_infra_original": "CERESO MEXICALI",
+    "latitud_original": 32.6564,
+    "longitud_original": -115.4792,
+    "nom_mun_corregido": "",
+    "nom_infra_corregido": "prueba",
+    "latitud_corregido": 32.6564,
+    "longitud_corregido": -115.4792,
+    "estatus_corregido": "Activo",
+    "fecha_correccion": "2025-03-12 10:02:07",
+    "usuario": "usuario_app"
+  }
+]

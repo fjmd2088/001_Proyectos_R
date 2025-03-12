@@ -7,41 +7,54 @@ library(openxlsx)
 
 RUTA_DATABASE <- "database/"
 
-datos_inconsistencias <- openxlsx::read.xlsx(paste0(RUTA_DATABASE,
-                                                    "inconsistencias_2025-03-06",
-                                                    ".xlsx")) %>%
-  # filter(cve_mun_INC != -2) %>%
-  select(-cve_mun) %>%
-  rename(
-    CNG = "censo",
-    tipo_infra = "nom_infra",
-    ID_2024 = "ID_INEGI_2024",
-    Ent = "NOM_ENT",
-    Mun = "nom_mun",
-    cve_mun = "cve_mun_INC",
-    nom_mun = "nom_mun_INC",
-    nom_infra = "nom_infraestructura_INC",
-    latitud = "latitud_INC",
-    longitud = "longitud_INC",
-    estatus = "estatus_INC"
-  ) %>%
-  select(CNG, tipo_infra, ID_2024, Ent, Mun, cve_mun, nom_mun, nom_infra, latitud, 
-         longitud, estatus, BASE)
-
-names(datos_inconsistencias)
-unique(datos_inconsistencias$ID_2024)
-
-datos_oficina <- datos_inconsistencias %>%
-  filter(BASE == "Dashboard ID") %>%
-  select(-BASE)
-
-datos_censo <- datos_inconsistencias %>%
-  filter(BASE == "CENSO") %>%
-  select(-BASE)
+# Función para cargar datos de manera más eficiente
+load_data <- function() {
+  RUTA_DATABASE <- "database/"
+  
+  datos_inconsistencias <- openxlsx::read.xlsx(paste0(RUTA_DATABASE,
+                                                      "inconsistencias_2025-03-06",
+                                                      ".xlsx")) %>%
+    # filter(cve_mun_INC != -2) %>%
+    select(-cve_mun) %>%
+    rename(
+      CNG = "censo",
+      tipo_infra = "nom_infra",
+      ID_2024 = "ID_INEGI_2024",
+      Ent = "NOM_ENT",
+      Mun = "nom_mun",
+      cve_mun = "cve_mun_INC",
+      nom_mun = "nom_mun_INC",
+      nom_infra = "nom_infraestructura_INC",
+      latitud = "latitud_INC",
+      longitud = "longitud_INC",
+      estatus = "estatus_INC"
+    ) %>%
+    select(CNG, tipo_infra, ID_2024, Ent, Mun, cve_mun, nom_mun, nom_infra, latitud, 
+           longitud, estatus, BASE)
+  
+  # Convertir a tipo adecuado para mejorar rendimiento
+  datos_inconsistencias$CNG <- as.character(datos_inconsistencias$CNG)
+  datos_inconsistencias$ID_2024 <- as.character(datos_inconsistencias$ID_2024)
+  
+  # Separar datos
+  datos_oficina <- datos_inconsistencias %>%
+    filter(BASE == "Dashboard ID") %>%
+    select(-BASE)
+  
+  datos_censo <- datos_inconsistencias %>%
+    filter(BASE == "CENSO") %>%
+    select(-BASE)
+  
+  return(list(
+    oficina = datos_oficina,
+    censo = datos_censo
+  ))
+}
 
 # Base de datos para guardar modificaciones
 datos_corregidos <- data.frame()
 
+# UI con mejoras para carga de datos
 ui <- page_fluid(
   theme = bs_theme(bootswatch = "flatly"),
   
@@ -53,32 +66,21 @@ ui <- page_fluid(
         sidebar = sidebar(
           title = "Filtros",
           width = 300,
-          selectizeInput("CNG", "CNG:", choices = unique(datos_oficina$CNG), multiple = TRUE),
-          selectizeInput("tipo_infra", "Tipo Infraestructura:", choices = unique(datos_oficina$tipo_infra), multiple = TRUE),
-          selectizeInput("ID_2024", "ID INEGI 2024:", choices = unique(datos_oficina$ID_2024), multiple = TRUE),
-          selectizeInput("Ent", "Entidad:", choices = unique(datos_oficina$Ent), multiple = TRUE),
-          selectizeInput("Mun", "Municipio:", choices = unique(datos_oficina$Mun), multiple = TRUE),
-          actionButton("reset", "Limpiar filtros", class = "btn-secondary")
+          # Usar selectizeInput normal sin server = TRUE
+          selectizeInput("CNG", "CNG:", choices = NULL, multiple = TRUE),
+          selectizeInput("tipo_infra", "Tipo Infraestructura:", choices = NULL, multiple = TRUE),
+          selectizeInput("ID_2024", "ID INEGI 2024:", choices = NULL, multiple = TRUE),
+          selectizeInput("Ent", "Entidad:", choices = NULL, multiple = TRUE),
+          selectizeInput("Mun", "Municipio:", choices = NULL, multiple = TRUE),
+          actionButton("reset", "Limpiar filtros", class = "btn-secondary"),
+          hr(),
+          # Agregar limitador de resultados para mejorar rendimiento
+          numericInput("max_rows", "Mostrar máximo filas:", 100, min = 10, max = 1000)
         ),
         card(
           card_header("Información Oficina Central"),
-          tableOutput("tabla_oficina"),
-          tags$script(HTML("
-            $(document).on('dblclick', '#tabla_oficina tr', function() {
-              var rowIndex = $(this).index();
-              Shiny.setInputValue('tabla_oficina_row_dblclick', rowIndex + 1);
-            });
-          "))
-        ),
-        card(
-          card_header("Información CENSO"),
-          tableOutput("tabla_censo"),
-          tags$script(HTML("
-            $(document).on('dblclick', '#tabla_censo tr', function() {
-              var rowIndex = $(this).index();
-              Shiny.setInputValue('tabla_censo_row_dblclick', rowIndex + 1);
-            });
-          "))
+          # Cambio a DT para mejorar rendimiento con paginación
+          DTOutput("tabla_oficina")
         )
       )
     ),
@@ -89,50 +91,75 @@ ui <- page_fluid(
   )
 )
 
+
 server <- function(input, output, session) {
+  # Cargar datos de manera reactiva al inicio
+  datos <- reactiveVal()
+  
+  # Cargar los datos inmediatamente al iniciar la aplicación
+  datos_cargados <- tryCatch({
+    load_data()
+  }, error = function(e) {
+    showNotification(paste("Error al cargar datos:", e$message), 
+                     type = "error", duration = NULL)
+    return(list(oficina = data.frame(), censo = data.frame()))
+  })
+  
+  # Establecer datos cargados
+  datos(datos_cargados)
+  
+  # Inicializar opciones de selectizeInput sin el parámetro server = TRUE
+  observe({
+    req(datos())
+    updateSelectizeInput(session, "CNG", 
+                         choices = unique(datos()$oficina$CNG))
+    updateSelectizeInput(session, "tipo_infra", 
+                         choices = unique(datos()$oficina$tipo_infra))
+    updateSelectizeInput(session, "ID_2024", 
+                         choices = unique(datos()$oficina$ID_2024))
+    updateSelectizeInput(session, "Ent", 
+                         choices = unique(datos()$oficina$Ent))
+    updateSelectizeInput(session, "Mun", 
+                         choices = unique(datos()$oficina$Mun))
+  })
   
   # Datos filtrados
   datos_filtrados <- reactive({
-    datos <- datos_oficina
+    req(datos())
+    datos_oficina <- datos()$oficina
     
     if (!is.null(input$CNG) && length(input$CNG) > 0) {
-      datos <- datos %>% filter(CNG %in% input$CNG)
+      datos_oficina <- datos_oficina %>% filter(CNG %in% input$CNG)
     }
     if (!is.null(input$tipo_infra) && length(input$tipo_infra) > 0) {
-      datos <- datos %>% filter(tipo_infra %in% input$tipo_infra)
+      datos_oficina <- datos_oficina %>% filter(tipo_infra %in% input$tipo_infra)
     }
     if (!is.null(input$ID_2024) && length(input$ID_2024) > 0) {
-      datos <- datos %>% filter(ID_2024 %in% input$ID_2024)
+      datos_oficina <- datos_oficina %>% filter(ID_2024 %in% input$ID_2024)
     }
     if (!is.null(input$Ent) && length(input$Ent) > 0) {
-      datos <- datos %>% filter(Ent %in% input$Ent)
+      datos_oficina <- datos_oficina %>% filter(Ent %in% input$Ent)
     }
     if (!is.null(input$Mun) && length(input$Mun) > 0) {
-      datos <- datos %>% filter(Mun %in% input$Mun)
+      datos_oficina <- datos_oficina %>% filter(Mun %in% input$Mun)
     }
     
-    return(datos)
+    # Limitar número de resultados para mejorar rendimiento
+    if (nrow(datos_oficina) > input$max_rows) {
+      datos_oficina <- head(datos_oficina, input$max_rows)
+    }
+    
+    return(datos_oficina)
   })
   
   datos_censo_filtrados <- reactive({
-    ids <- datos_filtrados()$CNG
-    return(datos_censo %>% filter(CNG %in% ids))
-  })
-  
-  # Actualizar los filtros dinámicamente
-  observe({
-    filtered_data <- datos_filtrados()
+    req(datos())
+    datos_filtrados_ids <- datos_filtrados()$CNG
     
-    updateSelectizeInput(session, "CNG", choices = unique(datos_oficina$CNG), 
-                         selected = input$CNG)
-    updateSelectizeInput(session, "tipo_infra", choices = unique(datos_oficina$tipo_infra), 
-                         selected = input$tipo_infra)
-    updateSelectizeInput(session, "ID_2024", choices = unique(datos_oficina$ID_2024), 
-                         selected = input$ID_2024)
-    updateSelectizeInput(session, "Ent", choices = unique(datos_oficina$Ent), 
-                         selected = input$Ent)
-    updateSelectizeInput(session, "Mun", choices = unique(datos_oficina$Mun), 
-                         selected = input$Mun)
+    censo_filtrado <- datos()$censo %>% 
+      filter(CNG %in% datos_filtrados_ids)
+    
+    return(censo_filtrado)
   })
   
   # Botón de resetear filtros
@@ -144,311 +171,278 @@ server <- function(input, output, session) {
     updateSelectizeInput(session, "Mun", selected = character(0))
   })
   
-  # Función para colorear la tabla
-  highlight_diferencias <- function(data_oficina, data_censo) {
-    mapped_data <- data_oficina
+  # Preparar datos para DataTable con colores
+  prepare_dt_data <- function(data_oficina, data_censo) {
+    # Seleccionar solo columnas necesarias
+    data_comp <- data_oficina %>%
+      select(cve_mun, nom_mun, nom_infra, latitud, longitud, estatus)
     
-    for (i in 1:nrow(data_oficina)) {
-      for (j in 1:ncol(data_oficina)) {
-        if (i <= nrow(data_censo) && j <= ncol(data_censo)) {
-          # Usar identical() o all.equal() para manejar NAs correctamente
-          if (is.na(data_oficina[i, j]) && is.na(data_censo[i, j])) {
-            # Ambos son NA, considerarlos iguales
-            mapped_data[i, j] <- sprintf('<span style="background-color: #ccffcc;">%s</span>', "NA")
-          } else if (is.na(data_oficina[i, j]) || is.na(data_censo[i, j])) {
-            # Uno es NA pero el otro no, considerarlos diferentes
-            val_display <- if(is.na(data_oficina[i, j])) "NA" else data_oficina[i, j]
-            mapped_data[i, j] <- sprintf('<span style="background-color: #ffcccc;">%s</span>', val_display)
-          } else if (isTRUE(all.equal(data_oficina[i, j], data_censo[i, j]))) {
-            # Ambos tienen valores y son iguales
-            mapped_data[i, j] <- sprintf('<span style="background-color: #ccffcc;">%s</span>', data_oficina[i, j])
+    # Crear identificadores de diferencias para colorear celdas
+    diff_status <- matrix(0, nrow = nrow(data_comp), ncol = ncol(data_comp))
+    colnames(diff_status) <- colnames(data_comp)
+    
+    # Comparar con datos del censo
+    if (nrow(data_censo) > 0) {
+      data_censo_comp <- data_censo %>%
+        select(cve_mun, nom_mun, nom_infra, latitud, longitud, estatus)
+      
+      # Para cada fila y columna, determinar si hay diferencia
+      for (i in 1:min(nrow(data_comp), nrow(data_censo_comp))) {
+        for (j in 1:ncol(data_comp)) {
+          if (is.na(data_comp[i,j]) && is.na(data_censo_comp[i,j])) {
+            # Ambos NA - coincidencia
+            diff_status[i,j] <- -1
+          } else if (is.na(data_comp[i,j]) || is.na(data_censo_comp[i,j])) {
+            # Uno es NA - hay diferencia
+            diff_status[i,j] <- 1
+          } else if (!isTRUE(all.equal(data_comp[i,j], data_censo_comp[i,j]))) {
+            # Valores diferentes
+            diff_status[i,j] <- 1
           } else {
-            # Ambos tienen valores pero son diferentes
-            mapped_data[i, j] <- sprintf('<span style="background-color: #ffcccc;">%s</span>', data_oficina[i, j])
+            # Valores iguales
+            diff_status[i,j] <- -1
           }
         }
       }
     }
     
-    return(mapped_data)
+    return(list(
+      data = data_comp,
+      diff_status = diff_status
+    ))
   }
   
-  # Tabla Oficina
-  output$tabla_oficina <- renderTable({
-    data <- datos_filtrados() %>%
-      select(cve_mun, nom_mun, nom_infra, latitud, longitud, estatus)
+  # Tabla Oficina mejorada con DT y coloreado de diferencias
+  output$tabla_oficina <- renderDT({
+    req(datos_filtrados())
+    datos_of <- datos_filtrados()
+    datos_cen <- datos_censo_filtrados()
     
-    if (nrow(data) == 0) {
-      return(data.frame(Mensaje = "No hay datos disponibles"))
+    if (nrow(datos_of) == 0) {
+      return(datatable(data.frame(Mensaje = "No hay datos disponibles")))
     }
     
-    # Obtener datos censo para comparación
-    data_censo <- datos_censo_filtrados() %>%
-      select(cve_mun, nom_mun, nom_infra, latitud, longitud, estatus)
+    # Columnas que queremos comparar para identificar diferencias
+    columnas_comparar <- c("cve_mun", "nom_mun", "nom_infra", "latitud", "longitud", "estatus")
     
-    highlight_diferencias(data, data_censo)
-  }, sanitize.text.function = function(x) x, bordered = TRUE, hover = TRUE, width = "100%")
-  
-  # Tabla Censo
-  output$tabla_censo <- renderTable({
-    data <- datos_censo_filtrados() %>%
-      select(cve_mun, nom_mun, nom_infra, latitud, longitud, estatus)
+    # Crear la tabla base
+    dt <- datatable(
+      datos_of %>% select(CNG, tipo_infra, ID_2024, Ent, Mun, cve_mun, nom_mun, nom_infra, latitud, longitud, estatus),
+      options = list(
+        pageLength = 10,
+        lengthMenu = c(5, 10, 15, 20),
+        searching = TRUE,
+        scrollX = TRUE,
+        dom = 'Blfrtip',
+        buttons = c('copy', 'csv', 'excel'),
+        deferRender = TRUE,
+        scroller = TRUE
+      ),
+      rownames = FALSE,
+      selection = "single",
+      callback = JS("
+    table.on('dblclick', 'tr', function() {
+      var id = table.row(this).index();
+      Shiny.setInputValue('tabla_oficina_row_dblclick', id + 1);
+    });
+  "),
+  caption = "Haga doble clic en una fila para editar"
+    )
     
-    if (nrow(data) == 0) {
-      return(data.frame(Mensaje = "No hay datos disponibles"))
-    }
-    
-    # Obtener datos oficina para comparación
-    data_oficina <- datos_filtrados() %>%
-      select(cve_mun, nom_mun, nom_infra, latitud, longitud, estatus)
-    
-    highlight_diferencias(data, data_oficina)
-  }, sanitize.text.function = function(x) x, bordered = TRUE, hover = TRUE, width = "100%")
-  
-  # Detectar doble clic en la tabla
-  registro_seleccionado <- reactiveVal(NULL)
-  
-  # Manejar doble clic en tabla oficina
-  observeEvent(input$tabla_oficina_row_dblclick, {
-    row <- input$tabla_oficina_row_dblclick
-    if (!is.null(row) && row > 0 && row <= nrow(datos_filtrados())) {
-      oficina_row <- datos_filtrados()[row, ]
-      censo_row <- datos_censo_filtrados()[row, ]
+    # Colorear celdas con diferencias
+    for (i in 1:nrow(datos_of)) {
+      # Buscar datos correspondientes en el censo
+      fila_censo <- datos_cen %>% filter(CNG == datos_of$CNG[i])
       
-      # Guardar en reactivo para usar en el panel
-      registro_seleccionado(list(
-        oficina = oficina_row,
-        censo = censo_row,
-        indice = row,
-        fuente = "oficina"
-      ))
-      
-      # Cambiar a la pestaña de edición
-      updateTabsetPanel(session, inputId = "navset", selected = "Corregir Registro")
+      if (nrow(fila_censo) > 0) {
+        for (col in columnas_comparar) {
+          # Comparar valores
+          valor_oficina <- datos_of[[col]][i]
+          valor_censo <- fila_censo[[col]][1]
+          
+          # Si son diferentes, colorear la celda
+          if (!identical(valor_oficina, valor_censo)) {
+            dt <- dt %>% formatStyle(
+              col,
+              target = "cell",
+              backgroundColor = styleRow(i, "#FFCCCC") # Color rojo claro para diferencias
+            )
+          }
+        }
+      } else {
+        # Si no hay datos en el censo, colorear toda la fila
+        for (col in columnas_comparar) {
+          dt <- dt %>% formatStyle(
+            col,
+            target = "cell",
+            backgroundColor = styleRow(i, "#FFFFCC") # Color amarillo claro para filas sin datos en censo
+          )
+        }
+      }
     }
+    
+    dt
   })
   
-  # Manejar doble clic en tabla censo
-  observeEvent(input$tabla_censo_row_dblclick, {
-    row <- input$tabla_censo_row_dblclick
-    if (!is.null(row) && row > 0 && row <= nrow(datos_censo_filtrados())) {
-      oficina_row <- datos_filtrados()[row, ]
-      censo_row <- datos_censo_filtrados()[row, ]
-      
-      # Guardar en reactivo para usar en el panel
-      registro_seleccionado(list(
-        oficina = oficina_row,
-        censo = censo_row,
-        indice = row,
-        fuente = "censo"
-      ))
-      
-      # Cambiar a la pestaña de edición
-      updateTabsetPanel(session, inputId = "navset", selected = "Corregir Registro")
-    }
+  # Registro seleccionado para edición
+  selected_row <- reactiveVal(NULL)
+  
+  # Detectar doble clic en la tabla de oficina
+  observeEvent(input$tabla_oficina_row_dblclick, {
+    selected_row(input$tabla_oficina_row_dblclick)
+    updateTabsetPanel(session, "navset", selected = "Corregir Registro")
   })
   
   # Panel de edición
   output$edicion_panel <- renderUI({
-    reg <- registro_seleccionado()
+    req(selected_row())
     
-    if (is.null(reg)) {
+    # Obtener datos de la fila seleccionada
+    datos_of <- datos_filtrados()
+    datos_cen <- datos_censo_filtrados()
+    
+    if(is.null(selected_row()) || selected_row() > nrow(datos_of)) {
       return(card(
-        card_header("Editar Registro"),
-        p("Seleccione un registro con doble clic en la tabla para editarlo")
+        card_header("Edición"),
+        "Seleccione un registro para editar haciendo doble clic en la tabla de inconsistencias."
       ))
     }
     
-    # Detectar diferencias
-    diferencias <- c()
-    campos_comparar <- c("cve_mun", "nom_mun", "nom_infra", "latitud", "longitud", "estatus")
+    # Extraer datos de la fila seleccionada
+    row_idx <- selected_row()
+    fila_of <- datos_of[row_idx, ]
     
-    for (campo in campos_comparar) {
-      if (reg$oficina[[campo]] != reg$censo[[campo]]) {
-        diferencias <- c(diferencias, campo)
-      }
-    }
+    # Buscar datos correspondientes en censo
+    fila_cen <- datos_cen %>% 
+      filter(CNG == fila_of$CNG) %>%
+      head(1)
     
-    # Crear los inputs para la edición
-    inputs_list <- list()
-    
-    for (campo in campos_comparar) {
-      es_diferente <- campo %in% diferencias
-      
-      # Para los campos numéricos
-      if (campo %in% c("latitud", "longitud")) {
-        inputs_list[[campo]] <- list(
-          card(
-            card_header(campo),
-            layout_column_wrap(
-              width = "100%",
-              value_box(
-                title = "Oficina Central",
-                value = reg$oficina[[campo]],
-                showcase = bsicons::bs_icon("building"),
-                theme = if (es_diferente) "danger" else "success"
-              ),
-              value_box(
-                title = "CENSO",
-                value = reg$censo[[campo]],
-                showcase = bsicons::bs_icon("clipboard2-data"),
-                theme = if (es_diferente) "danger" else "success"
-              )
-            ),
-            numericInput(
-              paste0("edit_", campo),
-              "Valor corregido:",
-              value = reg$oficina[[campo]],
-              width = "100%"
-            ) %>% tagAppendAttributes(disabled = !es_diferente)
-          )
-        )
-      } else if (campo == "estatus") {
-        # Para el campo estatus (dropdown)
-        inputs_list[[campo]] <- list(
-          card(
-            card_header(campo),
-            layout_column_wrap(
-              width = "100%",
-              value_box(
-                title = "Oficina Central",
-                value = reg$oficina[[campo]],
-                showcase = bsicons::bs_icon("building"),
-                theme = if (es_diferente) "danger" else "success"
-              ),
-              value_box(
-                title = "CENSO",
-                value = reg$censo[[campo]],
-                showcase = bsicons::bs_icon("clipboard2-data"),
-                theme = if (es_diferente) "danger" else "success"
-              )
-            ),
-            selectInput(
-              paste0("edit_", campo),
-              "Valor corregido:",
-              choices = c("Activo", "Inactivo"),
-              selected = reg$oficina[[campo]],
-              width = "100%"
-            ) %>% tagAppendAttributes(disabled = !es_diferente)
-          )
-        )
-      } else {
-        # Para los campos de texto
-        inputs_list[[campo]] <- list(
-          card(
-            card_header(campo),
-            layout_column_wrap(
-              width = "100%",
-              value_box(
-                title = "Oficina Central",
-                value = reg$oficina[[campo]],
-                showcase = bsicons::bs_icon("building"),
-                theme = if (es_diferente) "danger" else "success"
-              ),
-              value_box(
-                title = "CENSO",
-                value = reg$censo[[campo]],
-                showcase = bsicons::bs_icon("clipboard2-data"),
-                theme = if (es_diferente) "danger" else "success"
-              )
-            ),
-            textInput(
-              paste0("edit_", campo),
-              "Valor corregido:",
-              value = reg$oficina[[campo]],
-              width = "100%"
-            ) %>% tagAppendAttributes(disabled = !es_diferente)
-          )
-        )
-      }
-    }
-    
-    # Construir la interfaz de edición
-    registro_info <- card(
-      card_header("Información del registro"),
-      layout_column_wrap(
-        width = 1/3,
-        value_box(
-          title = "CNG",
-          value = reg$oficina$CNG,
-          showcase = bsicons::bs_icon("upc")
-        ),
-        value_box(
-          title = "Tipo Infraestructura",
-          value = reg$oficina$tipo_infra,
-          showcase = bsicons::bs_icon("buildings")
-        ),
-        value_box(
-          title = "ID 2024",
-          value = reg$oficina$ID_2024,
-          showcase = bsicons::bs_icon("fingerprint")
-        )
+    if (nrow(fila_cen) == 0) {
+      fila_cen <- data.frame(
+        cve_mun = NA, nom_mun = NA, nom_infra = NA,
+        latitud = NA, longitud = NA, estatus = NA
       )
-    )
+    }
     
-    campos_edit <- layout_column_wrap(
-      width = 1/2,
-      !!!inputs_list
-    )
-    
-    botones <- layout_column_wrap(
-      width = 1/2,
-      actionButton("guardar", "Guardar cambios", class = "btn-success", width = "100%"),
-      actionButton("cancelar", "Cancelar", class = "btn-secondary", width = "100%")
-    )
-    
-    return(
+    # UI para edición
+    layout_column_wrap(
+      width = "250px",
       card(
-        card_header("Editar Registro"),
-        registro_info,
-        campos_edit,
-        botones
+        card_header("Información del registro"),
+        p(strong("CNG:"), fila_of$CNG),
+        p(strong("Tipo infraestructura:"), fila_of$tipo_infra),
+        p(strong("ID 2024:"), fila_of$ID_2024),
+        p(strong("Entidad:"), fila_of$Ent),
+        p(strong("Municipio:"), fila_of$Mun)
+      ),
+      card(
+        card_header("Datos Oficina Central"),
+        p(strong("Clave Municipio:"), fila_of$cve_mun),
+        p(strong("Nombre Municipio:"), fila_of$nom_mun),
+        p(strong("Nombre Infraestructura:"), fila_of$nom_infra),
+        p(strong("Latitud:"), fila_of$latitud),
+        p(strong("Longitud:"), fila_of$longitud),
+        p(strong("Estatus:"), fila_of$estatus)
+      ),
+      card(
+        card_header("Datos CENSO"),
+        p(strong("Clave Municipio:"), fila_cen$cve_mun),
+        p(strong("Nombre Municipio:"), fila_cen$nom_mun),
+        p(strong("Nombre Infraestructura:"), fila_cen$nom_infra),
+        p(strong("Latitud:"), fila_cen$latitud),
+        p(strong("Longitud:"), fila_cen$longitud),
+        p(strong("Estatus:"), fila_cen$estatus)
+      ),
+      card(
+        card_header("Corregir inconsistencia"),
+        # Campos de entrada para la corrección
+        numericInput("correccion_cve_mun", "Clave Municipio:", value = fila_of$cve_mun),
+        textInput("correccion_nom_mun", "Nombre Municipio:", value = fila_of$nom_mun),
+        textInput("correccion_nom_infra", "Nombre Infraestructura:", value = fila_of$nom_infra),
+        numericInput("correccion_latitud", "Latitud:", value = fila_of$latitud),
+        numericInput("correccion_longitud", "Longitud:", value = fila_of$longitud),
+        selectInput("correccion_estatus", "Estatus:", 
+                    choices = c("Activo", "Inactivo", "En construcción", "Desconocido"),
+                    selected = fila_of$estatus),
+        
+        # Botones de acción
+        layout_column_wrap(
+          width = 1/2,
+          actionButton("guardar_correccion", "Guardar", class = "btn-primary"),
+          actionButton("cancelar_correccion", "Cancelar", class = "btn-secondary")
+        )
       )
     )
   })
   
-  # Manejar acción de guardar
-  observeEvent(input$guardar, {
-    reg <- registro_seleccionado()
+  # Guardar corrección
+  observeEvent(input$guardar_correccion, {
+    req(selected_row())
     
-    if (!is.null(reg)) {
-      # Crear registro corregido
-      registro_corregido <- reg$oficina
+    # Obtener datos originales
+    row_idx <- selected_row()
+    datos_of <- datos_filtrados()
+    fila_of <- datos_of[row_idx, ]
+    
+    # Crear registro de corrección
+    nueva_correccion <- data.frame(
+      CNG = fila_of$CNG,
+      tipo_infra = fila_of$tipo_infra,
+      ID_2024 = fila_of$ID_2024,
+      Ent = fila_of$Ent,
+      Mun = fila_of$Mun,
       
-      # Actualizar valores
-      campos_comparar <- c("cve_mun", "nom_mun", "nom_infra", "latitud", "longitud", "estatus")
-      for (campo in campos_comparar) {
-        input_id <- paste0("edit_", campo)
-        if (!is.null(input[[input_id]])) {
-          registro_corregido[[campo]] <- input[[input_id]]
-        }
+      cve_mun_original = fila_of$cve_mun,
+      nom_mun_original = fila_of$nom_mun,
+      nom_infra_original = fila_of$nom_infra,
+      latitud_original = fila_of$latitud,
+      longitud_original = fila_of$longitud,
+      estatus_original = fila_of$estatus,
+      
+      cve_mun_corregido = input$correccion_cve_mun,
+      nom_mun_corregido = input$correccion_nom_mun,
+      nom_infra_corregido = input$correccion_nom_infra,
+      latitud_corregido = input$correccion_latitud,
+      longitud_corregido = input$correccion_longitud,
+      estatus_corregido = input$correccion_estatus,
+      
+      fecha_correccion = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+      usuario = "usuario_app"
+    )
+    
+    # Agregar a la base de datos de correcciones
+    datos_corregidos <<- rbind(datos_corregidos, nueva_correccion)
+    
+    # Guardar en archivo
+    tryCatch({
+      # Crear directorio si no existe
+      if (!dir.exists("correcciones")) {
+        dir.create("correcciones")
       }
       
-      # En una aplicación real, aquí guardarías en la base de datos
-      # Por ahora, solo añadimos a la tabla de registros corregidos
-      datos_corregidos <<- rbind(datos_corregidos, registro_corregido)
+      # Nombre del archivo con fecha
+      nombre_archivo <- paste0("correcciones/correcciones_", 
+                               format(Sys.Date(), "%Y-%m-%d"), ".json")
       
-      # Mensaje de éxito
-      showModal(modalDialog(
-        title = "Corrección Guardada",
-        "Los cambios han sido guardados correctamente.",
-        easyClose = TRUE,
-        footer = actionButton("ok_modal", "Aceptar", class = "btn-primary")
-      ))
+      # Guardar en formato JSON
+      write_json(datos_corregidos, nombre_archivo, pretty = TRUE)
       
-      # Volver a la página principal al cerrar el modal
-      observeEvent(input$ok_modal, {
-        removeModal()
-        updateTabsetPanel(session, "navset", selected = "Inconsistencias")
-        registro_seleccionado(NULL)
-      }, once = TRUE)
-    }
+      showNotification("Corrección guardada exitosamente", type = "message")
+      
+      # Volver a la pestaña de inconsistencias
+      updateTabsetPanel(session, "navset", selected = "Inconsistencias")
+      selected_row(NULL)
+      
+    }, error = function(e) {
+      showNotification(paste("Error al guardar corrección:", e$message), 
+                       type = "error", duration = NULL)
+    })
   })
   
-  # Manejar acción de cancelar
-  observeEvent(input$cancelar, {
+  # Cancelar corrección
+  observeEvent(input$cancelar_correccion, {
     updateTabsetPanel(session, "navset", selected = "Inconsistencias")
-    registro_seleccionado(NULL)
+    selected_row(NULL)
   })
 }
 
