@@ -115,8 +115,10 @@ server <- function(input, output, session) {
                          choices = unique(datos()$oficina$CNG))
     updateSelectizeInput(session, "tipo_infra", 
                          choices = unique(datos()$oficina$tipo_infra))
+    # Actualización del selectizeInput usando el mecanismo de servidor
     updateSelectizeInput(session, "ID_2024", 
-                         choices = unique(datos()$oficina$ID_2024))
+                         choices = unique(datos()$oficina$ID_2024),
+                         server = TRUE)
     updateSelectizeInput(session, "Ent", 
                          choices = unique(datos()$oficina$Ent))
     updateSelectizeInput(session, "Mun", 
