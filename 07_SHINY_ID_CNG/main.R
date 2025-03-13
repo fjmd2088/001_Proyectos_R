@@ -308,6 +308,7 @@ server <- function(input, output, session) {
     ))
   }
   
+  # Tabla Oficina mejorada con DT y coloreado de diferencias----------------------------------------
   # Tabla Oficina mejorada con DT y coloreado de diferencias
   output$tabla_oficina <- renderDT({
     req(datos_filtrados())
@@ -337,12 +338,15 @@ server <- function(input, output, session) {
       rownames = FALSE,
       selection = "single",
       callback = JS("
-    table.on('dblclick', 'tr', function() {
-      var id = table.row(this).index();
-      Shiny.setInputValue('tabla_oficina_row_dblclick', id + 1);
-    });
-  "),
-  caption = "Haga doble clic en una fila para editar"
+      table.on('dblclick', 'tr', function() {
+        var rowData = table.row(this).data();
+        var rowIndex = table.row(this).index();
+        Shiny.setInputValue('tabla_oficina_row_dblclick', rowIndex + 1, {priority: 'event'});
+        // También enviamos los datos de la fila para depuración
+        Shiny.setInputValue('tabla_oficina_row_data', rowData, {priority: 'event'});
+      });
+    "),
+    caption = "Haga doble clic en una fila para editar"
     )
     
     # Colorear celdas con diferencias
@@ -385,35 +389,75 @@ server <- function(input, output, session) {
   
   # Detectar doble clic en la tabla de oficina
   observeEvent(input$tabla_oficina_row_dblclick, {
-    selected_row(input$tabla_oficina_row_dblclick)
+    # Guardar el índice de la fila seleccionada
+    fila_seleccionada <- input$tabla_oficina_row_dblclick
+    
+    # Imprimir para depuración
+    cat("Fila seleccionada por doble clic:", fila_seleccionada, "\n")
+    
+    # Actualizar el reactiveVal
+    selected_row(fila_seleccionada)
+    
+    # Cambiar a la pestaña de edición
     updateTabsetPanel(session, "navset", selected = "Corregir Registro")
-  })
+  }, ignoreNULL = TRUE, priority = 10)
   
+  # Panel de edición--------------------------------------------------------------------------------
   # Panel de edición
   output$edicion_panel <- renderUI({
-    req(selected_row())
-    
-    # Obtener datos de la fila seleccionada
-    datos_of <- datos_filtrados()
-    datos_cen <- datos_censo_filtrados()
-    
-    if(is.null(selected_row()) || selected_row() > nrow(datos_of)) {
+    # Verificar que tenemos un índice de fila válido
+    if(is.null(selected_row())) {
       return(card(
         card_header("Edición"),
         "Seleccione un registro para editar haciendo doble clic en la tabla de inconsistencias."
       ))
     }
     
-    # Extraer datos de la fila seleccionada
+    # Obtener datos de la fila seleccionada
+    datos_of <- datos_filtrados()
+    
+    # Verificar que la fila existe
     row_idx <- selected_row()
+    cat("Usando fila índice:", row_idx, "de", nrow(datos_of), "filas totales\n")
+    
+    
+    
+    if(row_idx > nrow(datos_of) || row_idx < 1) {
+      return(card(
+        card_header("Error"),
+        "El índice de fila seleccionado no es válido. Por favor, vuelva a la tabla y seleccione una fila."
+      ))
+    }
+    
+ 
+    # cat("dim: ",dim(row_idx))
+    
+    # Extraer datos de la fila seleccionada
     fila_of <- datos_of[row_idx, ]
+    # cat("fila_of: ",str(fila_of))
     
-    # Buscar datos correspondientes en censo
-    fila_cen <- datos_cen %>% 
-      filter(CNG == fila_of$CNG) %>%
-      head(1)
+    # Buscar datos correspondientes en censo usando el CNG específico
+    cng_seleccionado <- fila_of$ID_2024
     
-    if (nrow(fila_cen) == 0) {
+    # Imprimir para depuración
+    print(paste("CNG seleccionado:", cng_seleccionado))
+    
+    # Buscar directamente en los datos originales del censo
+    fila_cen <- datos()$censo %>% 
+      filter(ID_2024 == cng_seleccionado)
+    
+   
+    # print(cng_seleccionado)
+    # print(fila_cen)
+    
+    # Imprimir para depuración
+    # print(paste("Filas encontradas en censo:", nrow(fila_cen)))
+    
+    # Si se encuentran múltiples filas, tomar solo la primera
+    if (nrow(fila_cen) > 0) {
+      fila_cen <- fila_cen[1, ]
+    } else {
+      # Si no se encuentra ninguna fila, crear una con valores NA
       fila_cen <- data.frame(
         cve_mun = NA, nom_mun = NA, nom_infra = NA,
         latitud = NA, longitud = NA, estatus = NA
@@ -441,13 +485,13 @@ server <- function(input, output, session) {
         p(strong("Estatus:"), fila_of$estatus)
       ),
       card(
-        card_header("Datos CENSO"),
-        p(strong("Clave Municipio:"), fila_cen$cve_mun),
-        p(strong("Nombre Municipio:"), fila_cen$nom_mun),
-        p(strong("Nombre Infraestructura:"), fila_cen$nom_infra),
-        p(strong("Latitud:"), fila_cen$latitud),
-        p(strong("Longitud:"), fila_cen$longitud),
-        p(strong("Estatus:"), fila_cen$estatus)
+        card_header(paste0("Datos CENSO (CNG: ", cng_seleccionado, ")")),
+        p(strong("Clave Municipio:"), if(is.na(fila_cen$cve_mun)) "No disponible" else fila_cen$cve_mun),
+        p(strong("Nombre Municipio:"), if(is.na(fila_cen$nom_mun)) "No disponible" else fila_cen$nom_mun),
+        p(strong("Nombre Infraestructura:"), if(is.na(fila_cen$nom_infra)) "No disponible" else fila_cen$nom_infra),
+        p(strong("Latitud:"), if(is.na(fila_cen$latitud)) "No disponible" else fila_cen$latitud),
+        p(strong("Longitud:"), if(is.na(fila_cen$longitud)) "No disponible" else fila_cen$longitud),
+        p(strong("Estatus:"), if(is.na(fila_cen$estatus)) "No disponible" else fila_cen$estatus)
       ),
       card(
         card_header("Corregir inconsistencia"),
@@ -471,7 +515,7 @@ server <- function(input, output, session) {
     )
   })
   
-  # Guardar corrección
+  # Guardar corrección------------------------------------------------------------------------------
   observeEvent(input$guardar_correccion, {
     req(selected_row())
     
