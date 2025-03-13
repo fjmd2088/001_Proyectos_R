@@ -109,21 +109,107 @@ server <- function(input, output, session) {
   datos(datos_cargados)
   
   # Inicializar opciones de selectizeInput sin el parámetro server = TRUE
+  # Función auxiliar para filtrar datos según los filtros actuales
+  filtered_data_for_choices <- reactive({
+    result <- datos()$oficina
+    
+    if (!is.null(input$CNG) && length(input$CNG) > 0)
+      result <- result %>% filter(CNG %in% input$CNG)
+    
+    if (!is.null(input$tipo_infra) && length(input$tipo_infra) > 0)
+      result <- result %>% filter(tipo_infra %in% input$tipo_infra)
+    
+    if (!is.null(input$ID_2024) && length(input$ID_2024) > 0)
+      result <- result %>% filter(ID_2024 %in% input$ID_2024)
+    
+    if (!is.null(input$Ent) && length(input$Ent) > 0)
+      result <- result %>% filter(Ent %in% input$Ent)
+    
+    if (!is.null(input$Mun) && length(input$Mun) > 0)
+      result <- result %>% filter(Mun %in% input$Mun)
+    
+    return(result)
+  })
+  
+  # Inicializar todos los selectores al cargar la aplicación
   observe({
     req(datos())
-    updateSelectizeInput(session, "CNG", 
-                         choices = unique(datos()$oficina$CNG))
-    updateSelectizeInput(session, "tipo_infra", 
-                         choices = unique(datos()$oficina$tipo_infra))
-    # Actualización del selectizeInput usando el mecanismo de servidor
-    updateSelectizeInput(session, "ID_2024", 
-                         choices = unique(datos()$oficina$ID_2024),
-                         server = TRUE)
-    updateSelectizeInput(session, "Ent", 
-                         choices = unique(datos()$oficina$Ent))
-    updateSelectizeInput(session, "Mun", 
-                         choices = unique(datos()$oficina$Mun))
+    updateSelectizeInput(session, "CNG", choices = unique(datos()$oficina$CNG), selected = character(0))
+    updateSelectizeInput(session, "tipo_infra", choices = unique(datos()$oficina$tipo_infra), selected = character(0))
+    updateSelectizeInput(session, "ID_2024", choices = unique(datos()$oficina$ID_2024), selected = character(0))
+    updateSelectizeInput(session, "Ent", choices = unique(datos()$oficina$Ent), selected = character(0))
+    updateSelectizeInput(session, "Mun", choices = unique(datos()$oficina$Mun), selected = character(0))
   })
+  
+  # Actualizar filtros CNG cuando cambian otros filtros
+  observeEvent(list(input$tipo_infra, input$ID_2024, input$Ent, input$Mun), {
+    filtered <- filtered_data_for_choices()
+    current_selected <- isolate(input$CNG)
+    new_choices <- unique(filtered$CNG)
+    
+    # Mantener selecciones válidas
+    valid_selected <- intersect(current_selected, new_choices)
+    
+    updateSelectizeInput(session, "CNG", 
+                         choices = new_choices,
+                         selected = valid_selected)
+  }, ignoreNULL = FALSE, ignoreInit = TRUE)
+  
+  # Actualizar filtros tipo_infra cuando cambian otros filtros
+  observeEvent(list(input$CNG, input$ID_2024, input$Ent, input$Mun), {
+    filtered <- filtered_data_for_choices()
+    current_selected <- isolate(input$tipo_infra)
+    new_choices <- unique(filtered$tipo_infra)
+    
+    # Mantener selecciones válidas
+    valid_selected <- intersect(current_selected, new_choices)
+    
+    updateSelectizeInput(session, "tipo_infra", 
+                         choices = new_choices,
+                         selected = valid_selected)
+  }, ignoreNULL = FALSE, ignoreInit = TRUE)
+  
+  # Actualizar filtros ID_2024 cuando cambian otros filtros
+  observeEvent(list(input$CNG, input$tipo_infra, input$Ent, input$Mun), {
+    filtered <- filtered_data_for_choices()
+    current_selected <- isolate(input$ID_2024)
+    new_choices <- unique(filtered$ID_2024)
+    
+    # Mantener selecciones válidas
+    valid_selected <- intersect(current_selected, new_choices)
+    
+    updateSelectizeInput(session, "ID_2024", 
+                         choices = new_choices,
+                         selected = valid_selected)
+  }, ignoreNULL = FALSE, ignoreInit = TRUE)
+  
+  # Actualizar filtros Ent cuando cambian otros filtros
+  observeEvent(list(input$CNG, input$tipo_infra, input$ID_2024, input$Mun), {
+    filtered <- filtered_data_for_choices()
+    current_selected <- isolate(input$Ent)
+    new_choices <- unique(filtered$Ent)
+    
+    # Mantener selecciones válidas
+    valid_selected <- intersect(current_selected, new_choices)
+    
+    updateSelectizeInput(session, "Ent", 
+                         choices = new_choices,
+                         selected = valid_selected)
+  }, ignoreNULL = FALSE, ignoreInit = TRUE)
+  
+  # Actualizar filtros Mun cuando cambian otros filtros
+  observeEvent(list(input$CNG, input$tipo_infra, input$ID_2024, input$Ent), {
+    filtered <- filtered_data_for_choices()
+    current_selected <- isolate(input$Mun)
+    new_choices <- unique(filtered$Mun)
+    
+    # Mantener selecciones válidas
+    valid_selected <- intersect(current_selected, new_choices)
+    
+    updateSelectizeInput(session, "Mun", 
+                         choices = new_choices,
+                         selected = valid_selected)
+  }, ignoreNULL = FALSE, ignoreInit = TRUE)
   
   # Datos filtrados
   datos_filtrados <- reactive({
@@ -165,12 +251,20 @@ server <- function(input, output, session) {
   })
   
   # Botón de resetear filtros
+  # Botón de resetear filtros
   observeEvent(input$reset, {
     updateSelectizeInput(session, "CNG", selected = character(0))
     updateSelectizeInput(session, "tipo_infra", selected = character(0))
     updateSelectizeInput(session, "ID_2024", selected = character(0))
     updateSelectizeInput(session, "Ent", selected = character(0))
     updateSelectizeInput(session, "Mun", selected = character(0))
+    
+    # Actualizar todos los filtros con los valores completos originales
+    updateSelectizeInput(session, "CNG", choices = unique(datos()$oficina$CNG))
+    updateSelectizeInput(session, "tipo_infra", choices = unique(datos()$oficina$tipo_infra))
+    updateSelectizeInput(session, "ID_2024", choices = unique(datos()$oficina$ID_2024))
+    updateSelectizeInput(session, "Ent", choices = unique(datos()$oficina$Ent))
+    updateSelectizeInput(session, "Mun", choices = unique(datos()$oficina$Mun))
   })
   
   # Preparar datos para DataTable con colores
