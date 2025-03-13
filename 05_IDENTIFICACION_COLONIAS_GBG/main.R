@@ -19,10 +19,23 @@ library(stringr)
 library(stringi)
 library(dplyr)
 library(tidyr)
+library(ggplot2)
+library(officer)
+library(flextable)
+library(forcats)  # Para manipulación de factores
+library(magick)
 
 # DIRECTORIOS
 DIRECTORIO_CATALOGOS <- "catalogos/"
 DIRECTORIO_BD <-"bd/" 
+# DIRECTORIO_IMG <- "img/"
+# DIRECTORIO_PPT <- "ppt/"
+
+DIRECTORIO_IMG <- "img/"
+DIRECTORIO_PPT <- "ppt/"
+logo_path <- paste0(DIRECTORIO_IMG, "logo.png")
+grafico_path <- paste0(DIRECTORIO_IMG, "grafico1.png")
+archivo_ppt <- paste0(DIRECTORIO_PPT, "Reporte_mtcars.pptx")
 
 # VARIABLES
 NOMBRE_CATALOGO_CP <- "CodigosPostales_CDMX_modificado"
@@ -36,6 +49,16 @@ codigo_postal_cdmx <- read_excel(paste0(DIRECTORIO_CATALOGOS,NOMBRE_CATALOGO_CP,
 # CARGA BASE DE DATOS
 raw_reporte_entrega_domicilio <- read.csv(paste0(DIRECTORIO_BD,NOMBRE_REPORTE,".csv"))
 
+# Leer la imagen y obtener dimensiones originales
+img <- image_read(logo_path)
+img_info <- image_info(img)
+original_width <- img_info$width
+original_height <- img_info$height
+
+# Escalar la imagen al 50%
+scale_factor <- 0.5
+scaled_width <- original_width * scale_factor / 96  # Convertir a pulgadas
+scaled_height <- original_height * scale_factor / 96  # Convertir a pulgadas
 #---------------------------------------ANALISIS----------------------------------------------------
 
 # mod_colonias <- colonias %>%
@@ -185,6 +208,99 @@ informacion_con_colonia <- mod_reporte_entrega_domicilio %>% filter(!is.na(colon
   
   # concentrado final con la información correcta
   datos_correctos <- rbind(datos_colonia_cp_correcto,datos_colonia_correcto)
+  
+  # Agrupar y ordenar los datos
+  datos_graf1 <- datos_correctos %>%
+    group_by(Municipio,colonia) %>%
+    summarise(total = n()) %>%
+    arrange(desc(total)) %>%
+    mutate(colonia = fct_reorder(colonia, -total))  # Ordenar colonias por total
+  
+  resumen <- datos_graf1
+  
+  grafico <- ggplot(datos_graf1[1:15,], aes(x = colonia, y = total)) +
+    geom_bar(stat = "identity", fill = "blue") +
+    geom_text(aes(label = total), vjust = -0.3, color = "black", size = 4) +  # Etiquetas sobre las barras
+    labs(title = "Cantidad de entregas por colonia",
+         x = "Colonias") +  # Quitamos el título del eje Y
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),  # Rotar nombres para mejor legibilidad
+          axis.text.y = element_blank(),  # Quitar números del eje Y
+          axis.ticks.y = element_blank(),  # Quitar las marcas del eje Y
+          axis.title.y = element_blank())  # Quitar el título del eje Y
+  
+  # Guardar el gráfico como imagen
+  grafico_path <- paste0(DIRECTORIO_IMG,"grafico1.png")
+  ggsave(grafico_path, plot = grafico, width = 6, height = 4, dpi = 300)
+  
+  # Mostrar gráfico
+  print(grafico)
+  
+  # Crear una presentación con tamaño personalizado (Ejemplo: 16:9 -> 13.33 x 7.5 pulgadas)
+  ppt <- read_pptx(paste0(DIRECTORIO_PPT,"plantilla.pptx"))
+  
+  layout_summary(ppt)
+  
+  # Verificar los nombres de los placeholders disponibles en la diapositiva "Title Slide"
+  layout_info <- layout_properties(ppt, layout = "Diapositiva de título", master = "Tema de Office")
+  print(layout_info)  # Imprime los tipos de placeholders disponibles
+  
+  layout_info <- layout_properties(ppt, layout = "Título y texto vertical", master = "Tema de Office")
+  print(layout_info)  # Imprime los tipos de placeholders disponibles
+  # Crear la primera diapositiva con título y logo
+  ppt <- ppt %>% 
+    add_slide( layout = "Diapositiva de título", master = "Tema de Office") %>%
+    ph_with(value = "Análisis de mtcars en R", location = ph_location_type(type = "ctrTitle")) %>% 
+    ph_with(value = "Reporte generado en RStudio con officer y flextable", 
+            location = ph_location_type(type = "subTitle")) %>%
+    ph_with(external_img(logo_path),  
+            location = ph_location(left = 11, top = 6, width = 2, height = 1))  # Ajusta el tamaño aquí
+  
+  # Función para agregar diapositivas con logo y texto
+  add_slide_with_logo <- function(ppt, title, text) {
+    ppt <- ppt %>% add_slide( layout = "Título y texto vertical", master = "Tema de Office") %>%
+      ph_with(value = fpar(ftext(title, prop = fp_text(bold = TRUE, font.size = 20))),
+              location = ph_location_type(type = "title")) %>%
+      ph_with(value = fpar(ftext(text, prop = fp_text(font.size = 14))),
+              location = ph_location_type(type = "body")) %>%
+      ph_with(external_img(logo_path),  
+              location = ph_location(left = 11, top = 6, width = 2, height = 1))
+    return(ppt)
+  }
+  
+  # Resumen estadístico
+  ppt <-  add_slide_with_logo(ppt, "Resumen Estadístico", "Aquí se muestran estadísticas básicas de las variables más relevantes.") %>%
+    ph_with(value = flextable(resumen[1:10,]) %>% autofit(),
+            location = ph_location_type(type = "body"))
+  
+  # Gráfico de datos
+  ppt <- add_slide_with_logo(ppt, "Gráfico: Cantidad de entregas", "Este gráfico muestra la cantidad de entregas por colonia.") %>%
+    ph_with(value = external_img(grafico_path, height = 4, width = 6), location = ph_location_type(type = "body"))
+  
+  # Guardar el PowerPoint
+  print(ppt, target = archivo_ppt)
+  
+  # Crear PowerPoint
+  # ppt <- read_pptx()
+  # 
+  # # Verificar los layouts disponibles en la plantilla de PowerPoint
+  # layout_info <- layout_properties(ppt)
+  # print(layout_info)  # Verifica qué nombres de placeholder están disponibles
+  # 
+  # # Crear la primera diapositiva con título y logo
+  # ppt <- add_slide(ppt, layout = "Title Slide", master = "Office Theme") %>%
+  #   ph_with(value = "Análisis de mtcars en R", location = ph_location_type(type = "title")) %>%
+  #   ph_with(value = "Reporte generado en RStudio con officer y flextable", location = ph_location_type(type = "subTitle")) %>%
+  #   ph_with(external_img(logo_path, height = 1, width = 2), location = ph_location(left = 0.2, top = 0.2))
+  # 
+  
+  # 
+ # 
+  # 
+  # # Guardar el PowerPoint
+  # print(ppt, target = archivo_ppt)
+  
+  cat("El reporte ha sido generado y guardado como '", archivo_ppt, "'")
   
   
   # unique(datos_inconsistencias$Municipio)
