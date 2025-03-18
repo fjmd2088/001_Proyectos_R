@@ -9,9 +9,9 @@ library(shinyjs)
 # Base de datos de usuarios (en producción esto debería estar en un archivo externo o base de datos)
 # Por ahora lo definimos aquí para simplicidad
 usuarios_db <- data.frame(
-  email = c("admin@example.com", "usuario@example.com"),
-  password = c("admin123", "user123"),
-  nombre = c("Administrador", "Usuario"),
+  email = c("admin@example.com", "javier@gmail.com"),
+  password = c("admin123", "123"),
+  nombre = c("Administrador", "Javier"),
   stringsAsFactors = FALSE
 )
 
@@ -98,35 +98,71 @@ ui_app <- page_fluid(
   
   theme = bs_theme(bootswatch = "flatly"),
   
-  navset_card_pill(
-    id = "navset",
-    nav_panel(
-      title = "Inconsistencias",
-      layout_sidebar(
-        sidebar = sidebar(
-          title = "Filtros",
-          width = 300,
-          # Usar selectizeInput normal sin server = TRUE
-          selectizeInput("CNG", "CNG:", choices = NULL, multiple = TRUE),
-          selectizeInput("tipo_infra", "Tipo Infraestructura:", choices = NULL, multiple = TRUE),
-          selectizeInput("ID_2024", "ID INEGI 2024:", choices = NULL, multiple = TRUE),
-          selectizeInput("Ent", "Entidad:", choices = NULL, multiple = TRUE),
-          selectizeInput("Mun", "Municipio:", choices = NULL, multiple = TRUE),
-          actionButton("reset", "Limpiar filtros", class = "btn-secondary"),
-          hr(),
-          # Agregar limitador de resultados para mejorar rendimiento
-          numericInput("max_rows", "Mostrar máximo filas:", 100, min = 10, max = 1000)
+  # CORRECCIÓN - Barra superior con nombre de usuario y botón de logout
+  navbarPage(
+    title = "Sistema de Gestión de Inconsistencias",
+    bg = "primary",
+    
+    # Pestaña principal - mantenemos la estructura
+    tabPanel(
+      "Principal",
+      navset_card_pill(
+        id = "navset",
+        nav_panel(
+          title = "Inconsistencias",
+          layout_sidebar(
+            sidebar = sidebar(
+              title = "Filtros",
+              width = 300,
+              selectizeInput("CNG", "CNG:", choices = NULL, multiple = TRUE),
+              selectizeInput("tipo_infra", "Tipo Infraestructura:", choices = NULL, multiple = TRUE),
+              selectizeInput("ID_2024", "ID INEGI 2024:", choices = NULL, multiple = TRUE),
+              selectizeInput("Ent", "Entidad:", choices = NULL, multiple = TRUE),
+              selectizeInput("Mun", "Municipio:", choices = NULL, multiple = TRUE),
+              actionButton("reset", "Limpiar filtros", class = "btn-secondary"),
+              hr(),
+              numericInput("max_rows", "Mostrar máximo filas:", 100, min = 10, max = 1000)
+            ),
+            card(
+              card_header("Información Oficina Central"),
+              DTOutput("tabla_oficina")
+            )
+          )
         ),
-        card(
-          card_header("Información Oficina Central"),
-          # Cambio a DT para mejorar rendimiento con paginación
-          DTOutput("tabla_oficina")
+        nav_panel(
+          title = "Corregir Registro",
+          uiOutput("edicion_panel")
         )
       )
     ),
-    nav_panel(
-      title = "Corregir Registro",
-      uiOutput("edicion_panel")
+    
+    # Agregamos una pestaña "Mi Perfil" para mostrar el nombre de usuario
+    tabPanel(
+      "Mi Perfil", 
+      div(
+        style = "padding: 20px;",
+        card(
+          card_header("Información de Usuario"),
+          card_body(
+            textOutput("nombre_usuario_perfil")
+          )
+        )
+      )
+    ),
+    
+    # CORRECCIÓN - Agregar el nombre de usuario como elemento de la barra de navegación
+    # Colocamos esto en la parte derecha con HTML personalizado
+    header = tags$div(
+      class = "container-fluid",
+      tags$div(
+        class = "navbar-text float-end", 
+        style = "color: white; margin-right: 15px;",
+        tags$span("Bienvenido, "), textOutput("nombre_usuario", inline = TRUE)
+      ),
+      tags$div(
+        class = "navbar-text float-end",
+        actionButton("logout", "Cerrar sesión", class = "btn-danger btn-sm")
+      )
     )
   )
 )
@@ -184,8 +220,13 @@ server <- function(input, output, session) {
     updateTextInput(session, "password", value = "")
   })
   
-  # Mostrar nombre de usuario cuando está autenticado
+  # Mostrar nombre de usuario en ambos lugares
   output$nombre_usuario <- renderText({
+    req(user_data())
+    user_data()$nombre
+  })
+  
+  output$nombre_usuario_perfil <- renderText({
     req(user_data())
     paste("Bienvenido,", user_data()$nombre)
   })
