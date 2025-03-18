@@ -4,6 +4,7 @@ library(bslib)
 library(dplyr)
 library(jsonlite)
 library(openxlsx)
+library(shinyjs)
 
 RUTA_DATABASE <- "database/"
 
@@ -56,6 +57,8 @@ datos_corregidos <- data.frame()
 
 # UI con mejoras para carga de datos
 ui <- page_fluid(
+  useShinyjs(),  # Necesario para habilitar shinyjs
+  
   theme = bs_theme(bootswatch = "flatly"),
   
   navset_card_pill(
@@ -316,7 +319,7 @@ server <- function(input, output, session) {
   }
   
   # Tabla Oficina mejorada con DT y coloreado de diferencias----------------------------------------
-  # Tabla Oficina mejorada con DT y coloreado de diferencias
+
   output$tabla_oficina <- renderDT({
     req(datos_filtrados())
     datos_of <- datos_filtrados()
@@ -414,7 +417,6 @@ server <- function(input, output, session) {
   
   # Panel de edición--------------------------------------------------------------------------------
 
-  # Panel de edición--------------------------------------------------------------------------------
   output$edicion_panel <- renderUI({
     # Verificar el estado de guardado
     if(save_status() == "in_progress") {
@@ -611,10 +613,10 @@ server <- function(input, output, session) {
         numericInput("correccion_cve_mun", "Clave Municipio:", value = fila_of$cve_mun),
         textInput("correccion_nom_mun", "Nombre Municipio:", value = fila_of$nom_mun),
         textInput("correccion_nom_infra", "Nombre Infraestructura:", value = fila_of$nom_infra),
-        numericInput("correccion_latitud", "Latitud:", value = fila_of$latitud),
+        numericInput("correccion_latitud", "Latitud:", value = fila_of$latitud, max = 50),
         numericInput("correccion_longitud", "Longitud:", value = fila_of$longitud),
         selectInput("correccion_estatus", "Estatus:", 
-                    choices = c("Activo", "Inactivo", "En construcción", "Desconocido"),
+                    choices = c("ACTIVO", "INACTIVO"),
                     selected = fila_of$estatus),
         
         # Botones de acción
@@ -640,6 +642,8 @@ server <- function(input, output, session) {
       longitud = input$correccion_longitud,
       estatus = input$correccion_estatus
     )
+    
+    
     
     valores$mostrar_card_corregida <- TRUE
     
@@ -713,7 +717,12 @@ server <- function(input, output, session) {
         if (length(idx) > 0) {
           # Actualizar los valores en la fila correspondiente
           db_infra$ID_INEGI_2025[idx] <- fila_of$ID_2024
+          db_infra$cve_mun[idx] <- input$correccion_cve_mun
+          db_infra$nom_mun[idx] <- input$correccion_nom_mun
           db_infra$nom_infraestructura[idx] <- input$correccion_nom_infra
+          db_infra$latitud[idx] <- input$correccion_latitud
+          db_infra$longitud[idx] <- input$correccion_longitud
+          db_infra$estatus[idx] <- input$correccion_estatus
           
           # Guardar el archivo actualizado con la fecha
           fecha_archivo <- format(Sys.Date(), "%Y-%m-%d")
@@ -761,6 +770,9 @@ server <- function(input, output, session) {
       save_status("not_started")
       
     })
+    
+    
+    
   })
   
   # Cancelar corrección ----------------------------------------------------------------------------
