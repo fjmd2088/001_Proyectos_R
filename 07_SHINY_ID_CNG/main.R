@@ -518,6 +518,7 @@ server <- function(input, output, session) {
   
   # Guardar corrección------------------------------------------------------------------------------
   observeEvent(input$guardar_correccion, {
+    
     req(selected_row())
     
     # Obtener datos originales
@@ -568,6 +569,49 @@ server <- function(input, output, session) {
       # Guardar en formato JSON
       write_json(datos_corregidos, nombre_archivo, pretty = TRUE)
       
+      # NUEVO CÓDIGO: Actualizar el archivo DB_infraestructuras.xlsx
+      tryCatch({
+        # Crear directorio results si no existe
+        if (!dir.exists("results")) {
+          dir.create("results")
+        }
+        
+        # Cargar DB_infraestructuras.xlsx
+        db_path <- paste0(RUTA_DATABASE, "DB_infraestructuras.xlsx")
+        db_infra <- openxlsx::read.xlsx(db_path)
+        
+        # Buscar la fila con el ID_2024 correspondiente
+        idx <- which(db_infra$ID_INEGI_2024 == fila_of$ID_2024)
+        
+        if (length(idx) > 0) {
+          # Actualizar los valores en la fila correspondiente
+          db_infra$ID_INEGI_2025[idx] <- fila_of$ID_2024
+          db_infra$nom_infraestructura[idx] <- input$correccion_nom_infra
+          
+          # Guardar el archivo actualizado con la fecha
+          fecha_archivo <- format(Sys.Date(), "%Y-%m-%d")
+          output_path <- paste0("results/DB_infraestructuras_", fecha_archivo, ".xlsx")
+          
+          openxlsx::write.xlsx(db_infra, output_path)
+          
+          showNotification(
+            paste("Base de datos actualizada correctamente y guardada en:", output_path), 
+            type = "message"
+          )
+        } else {
+          showNotification(
+            paste("No se encontró el ID_2024:", fila_of$ID_2024, "en DB_infraestructuras.xlsx"), 
+            type = "warning"
+          )
+        }
+      }, error = function(e) {
+        showNotification(
+          paste("Error al actualizar DB_infraestructuras:", e$message), 
+          type = "error", 
+          duration = NULL
+        )
+      })
+      
       showNotification("Corrección guardada exitosamente", type = "message")
       
       # Volver a la pestaña de inconsistencias
@@ -580,7 +624,7 @@ server <- function(input, output, session) {
     })
   })
   
-  # Cancelar corrección
+  # Cancelar corrección ----------------------------------------------------------------------------
   observeEvent(input$cancelar_correccion, {
     updateTabsetPanel(session, "navset", selected = "Inconsistencias")
     selected_row(NULL)
