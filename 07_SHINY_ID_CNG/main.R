@@ -403,6 +403,7 @@ server <- function(input, output, session) {
   }, ignoreNULL = TRUE, priority = 10)
   
   # Panel de edición--------------------------------------------------------------------------------
+
   # Panel de edición
   output$edicion_panel <- renderUI({
     # Verificar que tenemos un índice de fila válido
@@ -420,8 +421,6 @@ server <- function(input, output, session) {
     row_idx <- selected_row()
     cat("Usando fila índice:", row_idx, "de", nrow(datos_of), "filas totales\n")
     
-    
-    
     if(row_idx > nrow(datos_of) || row_idx < 1) {
       return(card(
         card_header("Error"),
@@ -429,12 +428,8 @@ server <- function(input, output, session) {
       ))
     }
     
- 
-    # cat("dim: ",dim(row_idx))
-    
     # Extraer datos de la fila seleccionada
     fila_of <- datos_of[row_idx, ]
-    # cat("fila_of: ",str(fila_of))
     
     # Buscar datos correspondientes en censo usando el CNG específico
     cng_seleccionado <- fila_of$ID_2024
@@ -446,13 +441,6 @@ server <- function(input, output, session) {
     fila_cen <- datos()$censo %>% 
       filter(ID_2024 == cng_seleccionado)
     
-   
-    # print(cng_seleccionado)
-    # print(fila_cen)
-    
-    # Imprimir para depuración
-    # print(paste("Filas encontradas en censo:", nrow(fila_cen)))
-    
     # Si se encuentran múltiples filas, tomar solo la primera
     if (nrow(fila_cen) > 0) {
       fila_cen <- fila_cen[1, ]
@@ -462,6 +450,19 @@ server <- function(input, output, session) {
         cve_mun = NA, nom_mun = NA, nom_infra = NA,
         latitud = NA, longitud = NA, estatus = NA
       )
+    }
+    
+    # Función para comparar valores y aplicar color
+    compare_value <- function(val1, val2, is_na_handling = TRUE) {
+      # Comparar teniendo en cuenta valores NA
+      if (is_na_handling && (is.na(val1) || is.na(val2))) {
+        return(tags$span(style = "color: red; font-weight: bold;", 
+                         if(is.na(val1)) "No disponible" else val1))
+      } else if (identical(val1, val2)) {
+        return(tags$span(style = "color: green; font-weight: bold;", val1))
+      } else {
+        return(tags$span(style = "color: red; font-weight: bold;", val1))
+      }
     }
     
     # UI para edición
@@ -477,21 +478,21 @@ server <- function(input, output, session) {
       ),
       card(
         card_header("Datos Oficina Central"),
-        p(strong("Clave Municipio:"), fila_of$cve_mun),
-        p(strong("Nombre Municipio:"), fila_of$nom_mun),
-        p(strong("Nombre Infraestructura:"), fila_of$nom_infra),
-        p(strong("Latitud:"), fila_of$latitud),
-        p(strong("Longitud:"), fila_of$longitud),
-        p(strong("Estatus:"), fila_of$estatus)
+        p(strong("Clave Municipio:"), compare_value(fila_of$cve_mun, fila_cen$cve_mun)),
+        p(strong("Nombre Municipio:"), compare_value(fila_of$nom_mun, fila_cen$nom_mun)),
+        p(strong("Nombre Infraestructura:"), compare_value(fila_of$nom_infra, fila_cen$nom_infra)),
+        p(strong("Latitud:"), compare_value(fila_of$latitud, fila_cen$latitud)),
+        p(strong("Longitud:"), compare_value(fila_of$longitud, fila_cen$longitud)),
+        p(strong("Estatus:"), compare_value(fila_of$estatus, fila_cen$estatus))
       ),
       card(
         card_header(paste0("Datos CENSO (CNG: ", cng_seleccionado, ")")),
-        p(strong("Clave Municipio:"), if(is.na(fila_cen$cve_mun)) "No disponible" else fila_cen$cve_mun),
-        p(strong("Nombre Municipio:"), if(is.na(fila_cen$nom_mun)) "No disponible" else fila_cen$nom_mun),
-        p(strong("Nombre Infraestructura:"), if(is.na(fila_cen$nom_infra)) "No disponible" else fila_cen$nom_infra),
-        p(strong("Latitud:"), if(is.na(fila_cen$latitud)) "No disponible" else fila_cen$latitud),
-        p(strong("Longitud:"), if(is.na(fila_cen$longitud)) "No disponible" else fila_cen$longitud),
-        p(strong("Estatus:"), if(is.na(fila_cen$estatus)) "No disponible" else fila_cen$estatus)
+        p(strong("Clave Municipio:"), compare_value(fila_cen$cve_mun, fila_of$cve_mun)),
+        p(strong("Nombre Municipio:"), compare_value(fila_cen$nom_mun, fila_of$nom_mun)),
+        p(strong("Nombre Infraestructura:"), compare_value(fila_cen$nom_infra, fila_of$nom_infra)),
+        p(strong("Latitud:"), compare_value(fila_cen$latitud, fila_of$latitud)),
+        p(strong("Longitud:"), compare_value(fila_cen$longitud, fila_of$longitud)),
+        p(strong("Estatus:"), compare_value(fila_cen$estatus, fila_of$estatus))
       ),
       card(
         card_header("Corregir inconsistencia"),
