@@ -387,6 +387,9 @@ server <- function(input, output, session) {
   # Registro seleccionado para edición
   selected_row <- reactiveVal(NULL)
   
+  save_status <- reactiveVal("not_started") # Valores posibles: "not_started", "in_progress", "completed"
+  save_results <- reactiveVal(NULL) # Para almacenar los resultados de la corrección
+  
   # Detectar doble clic en la tabla de oficina
   observeEvent(input$tabla_oficina_row_dblclick, {
     # Guardar el índice de la fila seleccionada
@@ -404,8 +407,89 @@ server <- function(input, output, session) {
   
   # Panel de edición--------------------------------------------------------------------------------
 
-  # Panel de edición
+  # Panel de edición--------------------------------------------------------------------------------
   output$edicion_panel <- renderUI({
+    # Verificar el estado de guardado
+    if(save_status() == "in_progress") {
+      return(card(
+        card_header("Guardando corrección"),
+        div(
+          style = "text-align: center; padding: 20px;",
+          div(class = "progress",
+              div(class = "progress-bar progress-bar-striped progress-bar-animated", 
+                  role = "progressbar", 
+                  style = "width: 100%",
+                  "Guardando información...")
+          ),
+          p("Por favor espere mientras se guardan los cambios...")
+        )
+      ))
+    }
+    
+    # Mostrar resultados después de guardar
+    if(save_status() == "completed" && !is.null(save_results())) {
+      resultados <- save_results()
+      
+      return(card(
+        card_header("Corrección guardada exitosamente"),
+        div(
+          style = "padding: 15px;",
+          p(strong("ID:"), resultados$id),
+          p(strong("Archivo actualizado:"), resultados$nombre_archivo),
+          p(strong("Fecha de actualización:"), resultados$fecha),
+          hr(),
+          h4("Campos actualizados:"),
+          
+          # Tabla de cambios
+          tags$table(class = "table table-bordered",
+                     tags$thead(
+                       tags$tr(
+                         tags$th("Campo"),
+                         tags$th("Valor original"),
+                         tags$th("Valor nuevo")
+                       )
+                     ),
+                     tags$tbody(
+                       tags$tr(
+                         tags$td("Clave Municipio"),
+                         tags$td(resultados$campos_actualizados$cve_mun$original),
+                         tags$td(resultados$campos_actualizados$cve_mun$nuevo)
+                       ),
+                       tags$tr(
+                         tags$td("Nombre Municipio"),
+                         tags$td(resultados$campos_actualizados$nom_mun$original),
+                         tags$td(resultados$campos_actualizados$nom_mun$nuevo)
+                       ),
+                       tags$tr(
+                         tags$td("Nombre Infraestructura"),
+                         tags$td(resultados$campos_actualizados$nom_infra$original),
+                         tags$td(resultados$campos_actualizados$nom_infra$nuevo)
+                       ),
+                       tags$tr(
+                         tags$td("Latitud"),
+                         tags$td(resultados$campos_actualizados$latitud$original),
+                         tags$td(resultados$campos_actualizados$latitud$nuevo)
+                       ),
+                       tags$tr(
+                         tags$td("Longitud"),
+                         tags$td(resultados$campos_actualizados$longitud$original),
+                         tags$td(resultados$campos_actualizados$longitud$nuevo)
+                       ),
+                       tags$tr(
+                         tags$td("Estatus"),
+                         tags$td(resultados$campos_actualizados$estatus$original),
+                         tags$td(resultados$campos_actualizados$estatus$nuevo)
+                       )
+                     )
+          ),
+          
+          div(style = "text-align: center; margin-top: 20px;",
+              actionButton("regresar_principal", "Regresar a la página principal", class = "btn-primary btn-lg")
+          )
+        )
+      ))
+    }
+    
     # Verificar que tenemos un índice de fila válido
     if(is.null(selected_row())) {
       return(card(
@@ -521,6 +605,9 @@ server <- function(input, output, session) {
     
     req(selected_row())
     
+    # Cambiar estado a "en progreso"
+    save_status("in_progress")
+    
     # Obtener datos originales
     row_idx <- selected_row()
     datos_of <- datos_filtrados()
@@ -557,6 +644,7 @@ server <- function(input, output, session) {
     
     # Guardar en archivo
     tryCatch({
+      
       # Crear directorio si no existe
       if (!dir.exists("correcciones")) {
         dir.create("correcciones")
@@ -612,15 +700,18 @@ server <- function(input, output, session) {
         )
       })
       
-      showNotification("Corrección guardada exitosamente", type = "message")
+      # Cambiar estado a "completado"
+      save_status("completed")
       
-      # Volver a la pestaña de inconsistencias
-      updateTabsetPanel(session, "navset", selected = "Inconsistencias")
-      selected_row(NULL)
+      showNotification("Corrección guardada exitosamente", type = "message")
       
     }, error = function(e) {
       showNotification(paste("Error al guardar corrección:", e$message), 
                        type = "error", duration = NULL)
+      
+      # Restablecer estado en caso de error
+      save_status("not_started")
+      
     })
   })
   

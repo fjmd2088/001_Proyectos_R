@@ -1,0 +1,22 @@
+[
+  {
+    "CNG": "CNSIPEE",
+    "tipo_infra": "CP",
+    "ID_2024": "CP_02000E0004",
+    "Ent": "BAJA CALIFORNIA",
+    "Mun": "MEXICALI",
+    "cve_mun_original": "99",
+    "nom_mun_original": "PRUEBA",
+    "nom_infra_original": "CERESO MEXICALI",
+    "latitud_original": 32.6564,
+    "longitud_original": -115.4792,
+    "cve_mun_corregido": 99,
+    "nom_mun_corregido": "PRUEBA",
+    "nom_infra_corregido": "CENTRO DE REINSERCION SOCIAL MEXICALI",
+    "latitud_corregido": 32.6564,
+    "longitud_corregido": -115.4792,
+    "estatus_corregido": "Activo",
+    "fecha_correccion": "2025-03-18 10:36:57",
+    "usuario": "usuario_app"
+  }
+]
