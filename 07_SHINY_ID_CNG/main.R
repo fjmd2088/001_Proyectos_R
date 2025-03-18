@@ -96,6 +96,13 @@ server <- function(input, output, session) {
   # Cargar datos de manera reactiva al inicio
   datos <- reactiveVal()
   
+  valores <- reactiveValues(
+    # save_status = "init",
+    # cng_seleccionado = NULL,
+    registro_corregido = NULL,  # Aquí almacenaremos la información después de guardar
+    mostrar_card_corregida = FALSE
+  )
+  
   # Cargar los datos inmediatamente al iniciar la aplicación
   datos_cargados <- tryCatch({
     load_data()
@@ -250,8 +257,8 @@ server <- function(input, output, session) {
     return(censo_filtrado)
   })
   
-  # Botón de resetear filtros
-  # Botón de resetear filtros
+
+  # Botón de resetear filtros-----------------------------------------------------------------------
   observeEvent(input$reset, {
     updateSelectizeInput(session, "CNG", selected = character(0))
     updateSelectizeInput(session, "tipo_infra", selected = character(0))
@@ -578,6 +585,26 @@ server <- function(input, output, session) {
         p(strong("Longitud:"), compare_value(fila_cen$longitud, fila_of$longitud)),
         p(strong("Estatus:"), compare_value(fila_cen$estatus, fila_of$estatus))
       ),
+      # En el renderUI, usar esta variable para mostrar la card
+      if (valores$mostrar_card_corregida) {
+        card(
+          # Tu card de información corregida...
+          card(
+            card_header("Información Corregida"),
+            p(strong("Clave Municipio:"), valores$registro_corregido$cve_mun),
+            p(strong("Nombre Municipio:"), valores$registro_corregido$nom_mun),
+            p(strong("Nombre Infraestructura:"), valores$registro_corregido$nom_infra),
+            p(strong("Latitud:"), valores$registro_corregido$latitud),
+            p(strong("Longitud:"), valores$registro_corregido$longitud),
+            p(strong("Estatus:"), valores$registro_corregido$estatus),
+            hr(),
+            div(style = "font-style: italic; color: green; font-weight: bold;",
+                "✓ Información guardada correctamente")
+          )
+        )
+      } else {
+        NULL
+      },
       card(
         card_header("Corregir inconsistencia"),
         # Campos de entrada para la corrección
@@ -602,6 +629,18 @@ server <- function(input, output, session) {
   
   # Guardar corrección------------------------------------------------------------------------------
   observeEvent(input$guardar_correccion, {
+    
+    # Guardar los datos corregidos en valores reactivos
+    valores$registro_corregido <- list(
+      cve_mun = input$correccion_cve_mun,
+      nom_mun = input$correccion_nom_mun,
+      nom_infra = input$correccion_nom_infra,
+      latitud = input$correccion_latitud,
+      longitud = input$correccion_longitud,
+      estatus = input$correccion_estatus
+    )
+    
+    valores$mostrar_card_corregida <- TRUE
     
     req(selected_row())
     
@@ -717,6 +756,7 @@ server <- function(input, output, session) {
   
   # Cancelar corrección ----------------------------------------------------------------------------
   observeEvent(input$cancelar_correccion, {
+    valores$mostrar_card_corregida <- FALSE
     updateTabsetPanel(session, "navset", selected = "Inconsistencias")
     selected_row(NULL)
   })
