@@ -6,6 +6,15 @@ library(jsonlite)
 library(openxlsx)
 library(shinyjs)
 
+# Base de datos de usuarios (en producción esto debería estar en un archivo externo o base de datos)
+# Por ahora lo definimos aquí para simplicidad
+usuarios_db <- data.frame(
+  email = c("admin@example.com", "usuario@example.com"),
+  password = c("admin123", "user123"),
+  nombre = c("Administrador", "Usuario"),
+  stringsAsFactors = FALSE
+)
+
 RUTA_DATABASE <- "database/"
 
 # Función para cargar datos de manera más eficiente
@@ -55,8 +64,36 @@ load_data <- function() {
 # Base de datos para guardar modificaciones
 datos_corregidos <- data.frame()
 
-# UI con mejoras para carga de datos
-ui <- page_fluid(
+# UI de Login---------------------------------------------------------------------------------------
+ui_login <- page_fluid(
+  useShinyjs(),
+  
+  theme = bs_theme(bootswatch = "flatly"),
+  
+  div(
+    style = "display: flex; justify-content: center; align-items: center; height: 100vh;",
+    card(
+      width = "400px",
+      card_header(h3("Inicio de Sesión", style = "text-align: center;")),
+      card_body(
+        textInput("email", "Correo Electrónico", placeholder = "Ingresa tu email"),
+        passwordInput("password", "Contraseña", placeholder = "Ingresa tu contraseña"),
+        div(style = "color: red; margin-top: 10px; margin-bottom: 10px;", 
+            textOutput("login_error")),
+        div(style = "text-align: center; margin-top: 20px;",
+            actionButton("login", "Iniciar Sesión", class = "btn-primary", width = "100%")
+        )
+      ),
+      card_footer(
+        div(style = "text-align: center; color: #666;",
+            "Sistema de Gestión de Inconsistencias")
+      )
+    )
+  )
+)
+
+# UI con mejoras para carga de datos----------------------------------------------------------------
+ui_app <- page_fluid(
   useShinyjs(),  # Necesario para habilitar shinyjs
   
   theme = bs_theme(bootswatch = "flatly"),
@@ -94,8 +131,65 @@ ui <- page_fluid(
   )
 )
 
+# UI completa con manejo de estado de autenticación-------------------------------------------------
+ui <- function(request) {
+  # useShinyjs must be called once
+  tagList(
+    useShinyjs(),
+    uiOutput("ui")
+  )
+}
 
 server <- function(input, output, session) {
+  
+  # Variables reactivas para estado de autenticación
+  is_authenticated <- reactiveVal(FALSE)
+  user_data <- reactiveVal(NULL)
+  
+  # Renderizar la UI correcta según el estado de autenticación
+  output$ui <- renderUI({
+    if (is_authenticated()) {
+      ui_app
+    } else {
+      ui_login
+    }
+  })
+  
+  # Manejar inicio de sesión
+  observeEvent(input$login, {
+    # Validar credenciales
+    user_row <- usuarios_db %>% 
+      filter(email == input$email, password == input$password)
+    
+    if (nrow(user_row) > 0) {
+      # Credenciales válidas
+      is_authenticated(TRUE)
+      user_data(user_row)
+      output$login_error <- renderText("")
+    } else {
+      # Credenciales inválidas
+      output$login_error <- renderText("Correo electrónico o contraseña incorrectos")
+      shinyjs::addClass(id = "email", class = "is-invalid")
+      shinyjs::addClass(id = "password", class = "is-invalid")
+    }
+  })
+  
+  # Manejar cierre de sesión
+  observeEvent(input$logout, {
+    is_authenticated(FALSE)
+    user_data(NULL)
+    
+    # Reiniciar los valores de entrada
+    updateTextInput(session, "email", value = "")
+    updateTextInput(session, "password", value = "")
+  })
+  
+  # Mostrar nombre de usuario cuando está autenticado
+  output$nombre_usuario <- renderText({
+    req(user_data())
+    paste("Bienvenido,", user_data()$nombre)
+  })
+  
   # Cargar datos de manera reactiva al inicio
   datos <- reactiveVal()
   
