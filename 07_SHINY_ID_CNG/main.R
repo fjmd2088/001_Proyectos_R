@@ -621,7 +621,8 @@ server <- function(input, output, session) {
         layout_column_wrap(
           width = 1/2,
           actionButton("guardar_correccion", "Guardar", class = "btn-primary"),
-          actionButton("cancelar_correccion", "Cancelar", class = "btn-secondary")
+          actionButton("cancelar_correccion", "Cancelar", class = "btn-secondary"),
+          actionButton("regresar_principal", "Regresar", class = "btn-secondary")
         )
       )
     )
@@ -696,7 +697,6 @@ server <- function(input, output, session) {
       # Guardar en formato JSON
       write_json(datos_corregidos, nombre_archivo, pretty = TRUE)
       
-      # NUEVO CÓDIGO: Actualizar el archivo DB_infraestructuras.xlsx
       tryCatch({
         # Crear directorio results si no existe
         if (!dir.exists("results")) {
@@ -744,6 +744,15 @@ server <- function(input, output, session) {
       
       showNotification("Corrección guardada exitosamente", type = "message")
       
+      # AÑADIR ESTE CÓDIGO PARA LIMPIAR LOS CAMPOS DE ENTRADA:
+      updateNumericInput(session, "correccion_cve_mun", value = NA)
+      updateTextInput(session, "correccion_nom_mun", value = "")
+      updateTextInput(session, "correccion_nom_infra", value = "")
+      updateNumericInput(session, "correccion_latitud", value = NA)
+      updateNumericInput(session, "correccion_longitud", value = NA)
+      updateSelectInput(session, "correccion_estatus", selected = character(0))
+      
+      
     }, error = function(e) {
       showNotification(paste("Error al guardar corrección:", e$message), 
                        type = "error", duration = NULL)
@@ -757,6 +766,12 @@ server <- function(input, output, session) {
   # Cancelar corrección ----------------------------------------------------------------------------
   observeEvent(input$cancelar_correccion, {
     valores$mostrar_card_corregida <- FALSE
+    updateTabsetPanel(session, "navset", selected = "Inconsistencias")
+    selected_row(NULL)
+  })
+  
+  # Regresar principal ----------------------------------------------------------------------------
+  observeEvent(input$regresar_principal, {
     updateTabsetPanel(session, "navset", selected = "Inconsistencias")
     selected_row(NULL)
   })
