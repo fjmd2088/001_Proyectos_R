@@ -10,13 +10,13 @@
     "nom_infra_original": "CERESO MEXICALI",
     "latitud_original": 32.6564,
     "longitud_original": -115.4792,
-    "cve_mun_corregido": 999999,
-    "nom_mun_corregido": "PRUEBA99999",
-    "nom_infra_corregido": "CERESO MEXICALI99999",
+    "cve_mun_corregido": 99123456789,
+    "nom_mun_corregido": "PRUEBA",
+    "nom_infra_corregido": "CERESO MEXICALI",
     "latitud_corregido": 32.6564,
     "longitud_corregido": -115.4792,
-    "estatus_corregido": "INACTIVO",
-    "fecha_correccion": "2025-03-18 13:33:41",
+    "estatus_corregido": "ACTIVO",
+    "fecha_correccion": "2025-03-18 14:30:11",
     "usuario": "usuario_app"
   }
 ]

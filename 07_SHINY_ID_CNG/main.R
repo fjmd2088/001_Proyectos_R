@@ -633,6 +633,9 @@ server <- function(input, output, session) {
   # Guardar corrección------------------------------------------------------------------------------
   observeEvent(input$guardar_correccion, {
     
+    # Cambiar estado a "en progreso" ANTES de cualquier operación
+    save_status("in_progress")
+    
     # Guardar los datos corregidos en valores reactivos
     valores$registro_corregido <- list(
       cve_mun = input$correccion_cve_mun,
@@ -643,14 +646,9 @@ server <- function(input, output, session) {
       estatus = input$correccion_estatus
     )
     
-    
-    
     valores$mostrar_card_corregida <- TRUE
     
     req(selected_row())
-    
-    # Cambiar estado a "en progreso"
-    save_status("in_progress")
     
     # Obtener datos originales
     row_idx <- selected_row()
@@ -683,93 +681,107 @@ server <- function(input, output, session) {
       usuario = "usuario_app"
     )
     
-    # Agregar a la base de datos de correcciones
-    datos_corregidos <<- rbind(datos_corregidos, nueva_correccion)
-    
-    # Guardar en archivo
-    tryCatch({
+    # Ejecutar el proceso de guardado usando withProgress
+    withProgress(message = 'Guardando corrección', value = 0, {
       
-      # Crear directorio si no existe
-      if (!dir.exists("correcciones")) {
-        dir.create("correcciones")
-      }
+      # Agregar a la base de datos de correcciones
+      datos_corregidos <<- rbind(datos_corregidos, nueva_correccion)
       
-      # Nombre del archivo con fecha
-      nombre_archivo <- paste0("correcciones/correcciones_", 
-                               format(Sys.Date(), "%Y-%m-%d"), ".json")
-      
-      # Guardar en formato JSON
-      write_json(datos_corregidos, nombre_archivo, pretty = TRUE)
-      
+      # Guardar en archivo
       tryCatch({
-        # Crear directorio results si no existe
-        if (!dir.exists("results")) {
-          dir.create("results")
+        
+        # Crear directorio si no existe
+        if (!dir.exists("correcciones")) {
+          dir.create("correcciones")
         }
         
-        # Cargar DB_infraestructuras.xlsx
-        db_path <- paste0(RUTA_DATABASE, "DB_infraestructuras.xlsx")
-        db_infra <- openxlsx::read.xlsx(db_path)
+        # Nombre del archivo con fecha
+        nombre_archivo <- paste0("correcciones/correcciones_", 
+                                 format(Sys.Date(), "%Y-%m-%d"), ".json")
         
-        # Buscar la fila con el ID_2024 correspondiente
-        idx <- which(db_infra$ID_INEGI_2024 == fila_of$ID_2024)
+        incProgress(0.2, detail = "Guardando en JSON...")
         
-        if (length(idx) > 0) {
-          # Actualizar los valores en la fila correspondiente
-          db_infra$ID_INEGI_2025[idx] <- fila_of$ID_2024
-          db_infra$cve_mun[idx] <- input$correccion_cve_mun
-          db_infra$nom_mun[idx] <- input$correccion_nom_mun
-          db_infra$nom_infraestructura[idx] <- input$correccion_nom_infra
-          db_infra$latitud[idx] <- input$correccion_latitud
-          db_infra$longitud[idx] <- input$correccion_longitud
-          db_infra$estatus[idx] <- input$correccion_estatus
+        # Guardar en formato JSON
+        write_json(datos_corregidos, nombre_archivo, pretty = TRUE)
+        
+        incProgress(0.2, detail = "Actualizando base de datos...")
+        
+        tryCatch({
+          # Crear directorio results si no existe
+          if (!dir.exists("results")) {
+            dir.create("results")
+          }
           
-          # Guardar el archivo actualizado con la fecha
-          fecha_archivo <- format(Sys.Date(), "%Y-%m-%d")
-          output_path <- paste0("results/DB_infraestructuras_", fecha_archivo, ".xlsx")
+          # Cargar DB_infraestructuras.xlsx
+          db_path <- paste0(RUTA_DATABASE, "DB_infraestructuras.xlsx")
+          db_infra <- openxlsx::read.xlsx(db_path)
           
-          openxlsx::write.xlsx(db_infra, output_path)
+          incProgress(0.2, detail = "Actualizando registros...")
           
+          # Buscar la fila con el ID_2024 correspondiente
+          idx <- which(db_infra$ID_INEGI_2024 == fila_of$ID_2024)
+          
+          if (length(idx) > 0) {
+            # Actualizar los valores en la fila correspondiente
+            db_infra$ID_INEGI_2025[idx] <- fila_of$ID_2024
+            db_infra$cve_mun[idx] <- input$correccion_cve_mun
+            db_infra$nom_mun[idx] <- input$correccion_nom_mun
+            db_infra$nom_infraestructura[idx] <- input$correccion_nom_infra
+            db_infra$latitud[idx] <- input$correccion_latitud
+            db_infra$longitud[idx] <- input$correccion_longitud
+            db_infra$estatus[idx] <- input$correccion_estatus
+            
+            # Guardar el archivo actualizado con la fecha
+            fecha_archivo <- format(Sys.Date(), "%Y-%m-%d")
+            output_path <- paste0("results/DB_infraestructuras_", fecha_archivo, ".xlsx")
+            
+            openxlsx::write.xlsx(db_infra, output_path)
+            
+            incProgress(0.2, detail = "Completando...")
+            
+            showNotification(
+              paste("Base de datos actualizada correctamente y guardada en:", output_path), 
+              type = "message"
+            )
+          } else {
+            showNotification(
+              paste("No se encontró el ID_2024:", fila_of$ID_2024, "en DB_infraestructuras.xlsx"), 
+              type = "warning"
+            )
+          }
+        }, error = function(e) {
           showNotification(
-            paste("Base de datos actualizada correctamente y guardada en:", output_path), 
-            type = "message"
+            paste("Error al actualizar DB_infraestructuras:", e$message), 
+            type = "error", 
+            duration = NULL
           )
-        } else {
-          showNotification(
-            paste("No se encontró el ID_2024:", fila_of$ID_2024, "en DB_infraestructuras.xlsx"), 
-            type = "warning"
-          )
-        }
+        })
+        
+        # Cambiar estado a "completado"
+        save_status("completed")
+        
+        showNotification("Corrección guardada exitosamente", type = "message")
+        
+        # AÑADIR ESTE CÓDIGO PARA LIMPIAR LOS CAMPOS DE ENTRADA:
+        updateNumericInput(session, "correccion_cve_mun", value = NA)
+        updateTextInput(session, "correccion_nom_mun", value = "")
+        updateTextInput(session, "correccion_nom_infra", value = "")
+        updateNumericInput(session, "correccion_latitud", value = NA)
+        updateNumericInput(session, "correccion_longitud", value = NA)
+        updateSelectInput(session, "correccion_estatus", selected = character(0))
+        
+        
       }, error = function(e) {
-        showNotification(
-          paste("Error al actualizar DB_infraestructuras:", e$message), 
-          type = "error", 
-          duration = NULL
-        )
+        showNotification(paste("Error al guardar corrección:", e$message), 
+                         type = "error", duration = NULL)
+        
+        # Restablecer estado en caso de error
+        save_status("not_started")
+        
       })
-      
-      # Cambiar estado a "completado"
-      save_status("completed")
-      
-      showNotification("Corrección guardada exitosamente", type = "message")
-      
-      # AÑADIR ESTE CÓDIGO PARA LIMPIAR LOS CAMPOS DE ENTRADA:
-      updateNumericInput(session, "correccion_cve_mun", value = NA)
-      updateTextInput(session, "correccion_nom_mun", value = "")
-      updateTextInput(session, "correccion_nom_infra", value = "")
-      updateNumericInput(session, "correccion_latitud", value = NA)
-      updateNumericInput(session, "correccion_longitud", value = NA)
-      updateSelectInput(session, "correccion_estatus", selected = character(0))
-      
-      
-    }, error = function(e) {
-      showNotification(paste("Error al guardar corrección:", e$message), 
-                       type = "error", duration = NULL)
-      
-      # Restablecer estado en caso de error
-      save_status("not_started")
-      
     })
+    
+    
     
     
     
