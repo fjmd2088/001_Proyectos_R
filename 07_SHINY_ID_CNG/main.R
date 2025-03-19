@@ -150,7 +150,15 @@ ui_app <- page_fluid(
         card(
           card_header("Información de Usuario"),
           card_body(
-            textOutput("nombre_usuario_perfil")
+            textOutput("nombre_usuario_perfil"),
+            hr(),
+            h4("Cambiar Contraseña"),
+            passwordInput("current_password", "Contraseña Actual", placeholder = "Ingrese su contraseña actual"),
+            passwordInput("new_password", "Nueva Contraseña", placeholder = "Ingrese su nueva contraseña"),
+            passwordInput("confirm_password", "Confirmar Contraseña", placeholder = "Confirme su nueva contraseña"),
+            div(style = "color: red; margin-top: 10px;", textOutput("password_error")),
+            div(style = "color: green; margin-top: 10px;", textOutput("password_success")),
+            actionButton("request_password_change", "Solicitar Cambio de Contraseña", class = "btn-primary mt-3")
           )
         )
       )
@@ -940,6 +948,130 @@ server <- function(input, output, session) {
     updateTabsetPanel(session, "navset", selected = "Inconsistencias")
     selected_row(NULL)
   })
+  
+  
+  # Manejar solicitud de cambio de contraseña-------------------------------------------------------
+  # Lógica para cambiar contraseña
+  observeEvent(input$request_password_change, {
+    req(user_data())
+    
+    # Validar contraseña actual
+    if (input$current_password != user_data()$password) {
+      output$password_error <- renderText("La contraseña actual es incorrecta")
+      output$password_success <- renderText("")
+      return()
+    }
+    
+    # Validar que las nuevas contraseñas coincidan
+    if (input$new_password != input$confirm_password) {
+      output$password_error <- renderText("Las nuevas contraseñas no coinciden")
+      output$password_success <- renderText("")
+      return()
+    }
+    
+    # Validar que la nueva contraseña no sea igual a la actual
+    if (input$new_password == input$current_password) {
+      output$password_error <- renderText("La nueva contraseña debe ser diferente a la actual")
+      output$password_success <- renderText("")
+      return()
+    }
+    
+    # Establecer conexión con la base de datos Oracle
+    tryCatch({
+      # Cargar la conexión desde el archivo externo
+      source("conexion_oracle.R")
+      
+      # Verificar que se tiene una conexión válida
+      if (is.null(conexion)) {
+        output$password_error <- renderText("Error al conectar con la base de datos")
+        output$password_success <- renderText("")
+        return()
+      }
+      
+      # Construir la consulta para actualizar la contraseña
+      update_query <- paste0(
+        "UPDATE ", tr_roles, 
+        " SET password = '", input$new_password, 
+        "' WHERE id = ", user_data()$id
+      )
+      
+      message("Consulta SQL: ", update_query)
+      
+      # Mejor método para ejecutar la consulta en JDBC sin usar dbGetRowsAffected
+      update_success <- FALSE
+      
+      # Usar JDBC directamente para evitar el problema con dbGetRowsAffected
+      tryCatch({
+        # Obtener la conexión JDBC subyacente
+        if ("jc" %in% names(attributes(conexion)) && !is.null(conexion@jc)) {
+          # Método 1: Usar la API de JDBC directamente
+          stmt <- .jcall(conexion@jc, "Ljava/sql/Statement;", "createStatement")
+          affected_rows <- .jcall(stmt, "I", "executeUpdate", update_query)
+          .jcall(stmt, "V", "close")
+          message("Filas afectadas: ", affected_rows)
+          update_success <- affected_rows > 0
+        } else {
+          # Método 2: Usar dbSendStatement pero ignorar el resultado
+          rs <- dbSendStatement(conexion, update_query)
+          dbClearResult(rs)
+          update_success <- TRUE  # Asumimos éxito si no hay error
+        }
+        
+        message("Actualización ejecutada correctamente")
+      }, error = function(e) {
+        message("Error en la ejecución directa de JDBC: ", e$message)
+        
+        # Intento alternativo sin capturar el resultado
+        tryCatch({
+          dbExecute(conexion, update_query)
+          update_success <- TRUE
+          message("Actualización ejecutada usando dbExecute (sin capturar resultado)")
+        }, error = function(e2) {
+          message("Error en el método alternativo: ", e2$message)
+          output$password_error <- renderText(paste("Error al ejecutar la consulta SQL:", e2$message))
+        })
+      })
+      
+      # Procesar resultado basado en éxito/fracaso
+      if (update_success) {
+        # Actualizar datos de usuario en la aplicación
+        current_user <- user_data()
+        current_user$password <- input$new_password
+        user_data(current_user)
+        
+        # Mostrar mensaje de éxito
+        output$password_error <- renderText("")
+        output$password_success <- renderText("Contraseña actualizada correctamente en la base de datos")
+        
+        # Limpiar campos
+        updateTextInput(session, "current_password", value = "")
+        updateTextInput(session, "new_password", value = "")
+        updateTextInput(session, "confirm_password", value = "")
+      } else {
+        output$password_error <- renderText("No se pudo actualizar la contraseña en la base de datos")
+        output$password_success <- renderText("")
+      }
+      
+      # Cerrar la conexión después de usarla
+      dbDisconnect(conexion)
+      
+    }, error = function(e) {
+      output$password_error <- renderText(paste("Error al actualizar contraseña:", e$message))
+      output$password_success <- renderText("")
+      message("Error general: ", e$message)
+      
+      # Intentar cerrar la conexión en caso de error
+      if (exists("conexion") && !is.null(conexion)) {
+        tryCatch({
+          dbDisconnect(conexion)
+        }, error = function(e) {
+          # Ignorar errores al cerrar la conexión
+        })
+      }
+    })
+  })
+  
+# fin de server
 }
 
 shinyApp(ui, server)
