@@ -1,0 +1,18 @@
+[
+  {
+    "CNG": "CNSPE",
+    "tipo_infra": "CE-SP",
+    "ID_2024": "CE-SP_32000E1323",
+    "Ent": "ZACATECAS",
+    "Mun": "FRESNILLO",
+    "latitud_original": "23.15444",
+    "longitud_original": "-102.84976",
+    "nom_mun_corregido": "Prueba",
+    "nom_infra_corregido": "",
+    "latitud_corregido": 23.1544,
+    "longitud_corregido": -102.8498,
+    "estatus_corregido": "ACTIVO",
+    "fecha_correccion": "2025-03-19 16:14:24",
+    "usuario": "usuario_app"
+  }
+]

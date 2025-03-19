@@ -25,28 +25,39 @@ RUTA_DATABASE <- "database/"
 
 # Función para cargar datos de manera más eficiente
 load_data <- function() {
-  RUTA_DATABASE <- "database/"
+  # RUTA_DATABASE <- "database/"
   
-  datos_inconsistencias <- openxlsx::read.xlsx(paste0(RUTA_DATABASE,
-                                                      "inconsistencias_2025-03-06",
-                                                      ".xlsx")) %>%
-    # filter(cve_mun_INC != -2) %>%
+  # Conexion a base de datos
+  source("conexion_oracle.R")
+  
+  # Nombre de la tabla en Oracle
+  tr_inconsistencias <- "TR_INCONSISTENCIAS_PRUEBAS"
+  
+  # Consultar datos
+  query <- paste("SELECT * FROM", tr_inconsistencias)
+  datos_inconsistencias <- dbGetQuery(conexion, query)
+  colnames(datos_inconsistencias) <- str_to_lower(colnames(datos_inconsistencias))
+  
+  # Cerrar la conexión
+  dbDisconnect(conexion)
+
+  datos_inconsistencias <- datos_inconsistencias %>%
     select(-cve_mun) %>%
     rename(
       CNG = "censo",
       tipo_infra = "nom_infra",
-      ID_2024 = "ID_INEGI_2024",
-      Ent = "NOM_ENT",
+      ID_2024 = "id_inegi_2024",
+      Ent = "nom_ent",
       Mun = "nom_mun",
-      cve_mun = "cve_mun_INC",
-      nom_mun = "nom_mun_INC",
-      nom_infra = "nom_infraestructura_INC",
-      latitud = "latitud_INC",
-      longitud = "longitud_INC",
-      estatus = "estatus_INC"
+      cve_mun = "cve_mun_inc",
+      nom_mun = "nom_mun_inc",
+      nom_infra = "nom_infraestructura_inc",
+      latitud = "latitud_inc",
+      longitud = "longitud_inc",
+      estatus = "estatus_inc"
     ) %>%
     select(CNG, tipo_infra, ID_2024, Ent, Mun, cve_mun, nom_mun, nom_infra, latitud, 
-           longitud, estatus, BASE)
+           longitud, estatus, base)
   
   # Convertir a tipo adecuado para mejorar rendimiento
   datos_inconsistencias$CNG <- as.character(datos_inconsistencias$CNG)
@@ -54,12 +65,12 @@ load_data <- function() {
   
   # Separar datos
   datos_oficina <- datos_inconsistencias %>%
-    filter(BASE == "Dashboard ID") %>%
-    select(-BASE)
+    filter(base == "Dashboard ID") %>%
+    select(-base)
   
   datos_censo <- datos_inconsistencias %>%
-    filter(BASE == "CENSO") %>%
-    select(-BASE)
+    filter(base == "CENSO") %>%
+    select(-base)
   
   return(list(
     oficina = datos_oficina,
@@ -191,6 +202,7 @@ ui <- function(request) {
   )
 }
 
+# server--------------------------------------------------------------------------------------------
 server <- function(input, output, session) {
   
   # Variables reactivas para estado de autenticación
@@ -256,8 +268,6 @@ server <- function(input, output, session) {
   datos <- reactiveVal()
   
   valores <- reactiveValues(
-    # save_status = "init",
-    # cng_seleccionado = NULL,
     registro_corregido = NULL,  # Aquí almacenaremos la información después de guardar
     mostrar_card_corregida = FALSE
   )
@@ -274,7 +284,6 @@ server <- function(input, output, session) {
   # Establecer datos cargados
   datos(datos_cargados)
   
-  # Inicializar opciones de selectizeInput sin el parámetro server = TRUE
   # Función auxiliar para filtrar datos según los filtros actuales
   filtered_data_for_choices <- reactive({
     result <- datos()$oficina
@@ -869,6 +878,9 @@ server <- function(input, output, session) {
           }
           
           # Cargar DB_infraestructuras.xlsx
+          
+          
+          
           db_path <- paste0(RUTA_DATABASE, "DB_infraestructuras.xlsx")
           db_infra <- openxlsx::read.xlsx(db_path)
           
@@ -879,7 +891,7 @@ server <- function(input, output, session) {
           
           if (length(idx) > 0) {
             # Actualizar los valores en la fila correspondiente
-            db_infra$ID_INEGI_2025[idx] <- fila_of$ID_2024
+            db_infra$id_inegi_2025[idx] <- fila_of$ID_2024
             db_infra$cve_mun[idx] <- input$correccion_cve_mun
             db_infra$nom_mun[idx] <- input$correccion_nom_mun
             db_infra$nom_infraestructura[idx] <- input$correccion_nom_infra
@@ -888,10 +900,10 @@ server <- function(input, output, session) {
             db_infra$estatus[idx] <- input$correccion_estatus
             
             # Guardar el archivo actualizado con la fecha
-            fecha_archivo <- format(Sys.Date(), "%Y-%m-%d")
-            output_path <- paste0("results/DB_infraestructuras_", fecha_archivo, ".xlsx")
+            # fecha_archivo <- format(Sys.Date(), "%Y-%m-%d")
+            # output_path <- paste0("results/DB_infraestructuras_", fecha_archivo, ".xlsx")
             
-            openxlsx::write.xlsx(db_infra, output_path)
+            # openxlsx::write.xlsx(db_infra, output_path)
             
             incProgress(0.2, detail = "Completando...")
             
