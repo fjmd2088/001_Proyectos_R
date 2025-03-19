@@ -34,6 +34,7 @@ DIRECTORIO_PPT <- "ppt/"
 logo_path <- paste0(DIRECTORIO_IMG, "logo.png")
 grafico_path <- paste0(DIRECTORIO_IMG, "grafico1.png")
 
+ti <- Sys.time() # TIEMPO INICIAL
 
 # VARIABLES
 SUCURSALES <- c("Cafetales","Coyoacan","Division","Miramontes","Renato","SantaAna","Xochimilco")
@@ -52,7 +53,7 @@ mod_cp_cdmx <- codigo_postal_cdmx %>%
 
 # Bucle sobre las sucursales
 for(i in 1:length(SUCURSALES)){
-  # i <- 7
+  # i <- 1
   cat("Procesando sucursal: ", SUCURSALES[i], "\n\n")
   
   idx <- which(str_detect(ARCHIVOS_SUCURSALES,pattern = SUCURSALES[i]) == TRUE)
@@ -150,16 +151,15 @@ for(i in 1:length(SUCURSALES)){
   
   resumen <- datos_graf1
   
-  grafico <- ggplot(datos_graf1[1:15,], aes(x = colonia, y = total)) +
+  grafico <- ggplot(datos_graf1[1:15,], aes(x = reorder(colonia, total, function(x) -x), y = total)) +
     geom_bar(stat = "identity", fill = "blue") +
-    geom_text(aes(label = total), vjust = -0.3, color = "black", size = 4) +  # Etiquetas sobre las barras
+    geom_text(aes(label = total), vjust = -0.3, color = "black", size = 4) +
     labs(title = paste("Cantidad de entregas por colonia", " Sucursal: ", SUCURSALES[i]),
-         x = "Colonias") +  # Quitamos el título del eje Y
+         x = "Colonias",
+         y = "Total Entregas") +
     theme_minimal() +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1),  # Rotar nombres para mejor legibilidad
-          axis.text.y = element_blank(),  # Quitar números del eje Y
-          axis.ticks.y = element_blank(),  # Quitar las marcas del eje Y
-          axis.title.y = element_blank())  # Quitar el título del eje Y
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
   
   # Guardar el gráfico como imagen
   grafico_path <- paste0(DIRECTORIO_IMG,SUCURSALES[i],".png")
@@ -202,9 +202,24 @@ for(i in 1:length(SUCURSALES)){
             location = ph_location_type(type = "body"))
 
   # # Gráfico de datos
+  # ppt <- add_slide_with_logo(ppt, "Gráfico: Cantidad de entregas", "Este gráfico muestra la cantidad de entregas por colonia.") %>%
+    # ph_with(value = external_img(grafico_path, height = 4, width = 6), location = ph_location_type(type = "body"))
+  # Obtener dimensiones de la diapositiva
+  ppt_size <- slide_size(ppt)
+  
+  # Definir proporción de la imagen (porcentaje de la diapositiva)
+  img_width <- ppt_size$width * 0.8  # 80% del ancho de la diapositiva
+  img_height <- ppt_size$height * 0.6  # 60% del alto de la diapositiva
+  
   ppt <- add_slide_with_logo(ppt, "Gráfico: Cantidad de entregas", "Este gráfico muestra la cantidad de entregas por colonia.") %>%
-    ph_with(value = external_img(grafico_path, height = 4, width = 6), location = ph_location_type(type = "body"))
+    ph_with(value = external_img(grafico_path, height = img_height, width = img_width), 
+            location = ph_location(left = (ppt_size$width - img_width) / 2, 
+                                   top = (ppt_size$height - img_height) / 2, 
+                                   width = img_width, height = img_height))
 
   # Guardar el PowerPoint
   print(ppt, target = archivo_ppt)
 }
+
+cat("Archivos procesados: ", length(SUCURSALES), "\n")
+Sys.time() - ti # TIEMPO FINAL
