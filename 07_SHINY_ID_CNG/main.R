@@ -151,6 +151,7 @@ ui_app <- page_fluid(
           card_header("Información de Usuario"),
           card_body(
             textOutput("nombre_usuario_perfil"),
+            textOutput("email_usuario_perfil"),
             hr(),
             h4("Cambiar Contraseña"),
             passwordInput("current_password", "Contraseña Actual", placeholder = "Ingrese su contraseña actual"),
@@ -238,11 +239,17 @@ server <- function(input, output, session) {
   output$nombre_usuario <- renderText({
     req(user_data())
     user_data()$nombre
+    user_data()$apellidos
+    user_data()$email
   })
   
   output$nombre_usuario_perfil <- renderText({
     req(user_data())
-    paste("Bienvenido,", user_data()$nombre)
+    paste("Bienvenido,", user_data()$nombre, " ", user_data()$apellidos)
+  })
+  output$email_usuario_perfil <- renderText({
+    req(user_data())
+    paste("Email: ", user_data()$email)
   })
   
   # Cargar datos de manera reactiva al inicio
