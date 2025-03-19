@@ -4,16 +4,22 @@ library(bslib)
 library(dplyr)
 library(jsonlite)
 library(openxlsx)
+library(stringr)
 library(shinyjs)
 
-# Base de datos de usuarios (en producción esto debería estar en un archivo externo o base de datos)
-# Por ahora lo definimos aquí para simplicidad
-usuarios_db <- data.frame(
-  email = c("admin@example.com", "javier@gmail.com"),
-  password = c("admin123", "123"),
-  nombre = c("Administrador", "Javier"),
-  stringsAsFactors = FALSE
-)
+# Conexion a base de datos
+source("conexion_oracle.R")
+
+# Nombre de la tabla en Oracle
+tr_roles <- "TR_ROLES"
+
+# Consultar datos
+query <- paste("SELECT * FROM", tr_roles)
+usuarios_db <- dbGetQuery(conexion, query)
+colnames(usuarios_db) <- str_to_lower(colnames(usuarios_db))
+
+# Cerrar la conexión
+dbDisconnect(conexion)
 
 RUTA_DATABASE <- "database/"
 
