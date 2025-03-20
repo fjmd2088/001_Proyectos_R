@@ -112,6 +112,7 @@ for(i in 1:length(SUCURSALES)){
   datos_colonia_cp_correcto <- cruce_informacion %>%
     filter(!is.na(Municipio))
   
+  
   # se crea catalogo con las colonias correctas 
   catalogo_colonia_cp_correcta <- datos_colonia_cp_correcto %>%
     select(colonia,cp,Municipio) %>%
@@ -166,58 +167,129 @@ for(i in 1:length(SUCURSALES)){
   ggsave(grafico_path, plot = grafico, width = 12, height = 10, dpi = 300)
   
   # Crear una presentación con tamaño personalizado (Ejemplo: 16:9 -> 13.33 x 7.5 pulgadas)---------
+  
   ppt <- read_pptx(paste0(DIRECTORIO_PPT,"plantilla.pptx"))
-  layout_summary(ppt)
+  # ppt <- set_doc_properties(ppt, width = 13.33, height = 7.5)
   
-  # Verificar los nombres de los placeholders disponibles en la diapositiva "Title Slide"
-  layout_info <- layout_properties(ppt, layout = "Diapositiva de título", master = "Tema de Office")
-  # print(layout_info)  # Imprime los tipos de placeholders disponibles
-  layout_info <- layout_properties(ppt, layout = "Título y texto vertical", master = "Tema de Office")
-  # print(layout_info)  # Imprime los tipos de placeholders disponibles
+  # Agregar una diapositiva en blanco con un diseño de "Título y contenido"
+  ppt <- add_slide(ppt, layout = "En blanco", master = "Tema de Office")
   
-  # Crear la primera diapositiva con título y logo
-  ppt <- ppt %>%
-    add_slide( layout = "Diapositiva de título", master = "Tema de Office") %>%
-    ph_with(value = "Análisis de mtcars en R", location = ph_location_type(type = "ctrTitle")) %>%
-    ph_with(value = "Reporte generado en RStudio con officer y flextable",
-            location = ph_location_type(type = "subTitle")) %>%
-    ph_with(external_img(logo_path),
-            location = ph_location(left = 11, top = 6, width = 2, height = 1))  # Ajusta el tamaño aquí
-
-  # Función para agregar diapositivas con logo y texto
-  add_slide_with_logo <- function(ppt, title, text) {
-    ppt <- ppt %>% add_slide( layout = "Título y texto vertical", master = "Tema de Office") %>%
-      ph_with(value = fpar(ftext(title, prop = fp_text(bold = TRUE, font.size = 20))),
-              location = ph_location_type(type = "title")) %>%
-      ph_with(value = fpar(ftext(text, prop = fp_text(font.size = 14))),
-              location = ph_location_type(type = "body")) %>%
-      ph_with(external_img(logo_path),
-              location = ph_location(left = 11, top = 6, width = 2, height = 1))
-    return(ppt)
-  }
+  # Agregar el título centrado en color amarillo
+  titulo <- fpar(ftext("Resumen Estadístico", 
+                       prop = fp_text(bold = TRUE, color = "orange", font.size = 28)))
   
-  # Resumen estadístico
-  ppt <-  add_slide_with_logo(ppt, "Resumen Estadístico", "Aquí se muestran estadísticas básicas de las variables más relevantes.") %>%
-    ph_with(value = flextable(resumen[1:10,]) %>% autofit(),
-            location = ph_location_type(type = "body"))
-
-  # # Gráfico de datos
+  ppt <- ph_with(ppt, value = titulo, location = ph_location(left = 3, top = 0.5, width = 5, height = 1))
+  
+  # Agregar las métricas principales en negritas
+  texto_total <- fpar(
+    ftext("Cantidad total de registros: ", prop = fp_text(bold = TRUE, font.size = 14)),
+    ftext(CANT_TOTAL_REGISTROS, prop = fp_text(font.size = 14))
+  )
+  
+  texto_sin_info <- fpar(
+    ftext("Cantidad registros sin información: ", prop = fp_text(bold = TRUE, font.size = 14)),
+    ftext(CANT_REG_SIN_INF, prop = fp_text(font.size = 14))
+  )
+  
+  texto_con_info <- fpar(
+    ftext("Cantidad registros con información: ", prop = fp_text(bold = TRUE, font.size = 14)),
+    ftext(CANT_REG_CON_INF, prop = fp_text(font.size = 14))
+  )
+  
+  # Ubicar los textos en la diapositiva
+  ppt <- ph_with(ppt, value = texto_total, location = ph_location(left = 1, top = 1.5))
+  ppt <- ph_with(ppt, value = texto_sin_info, location = ph_location(left = 4, top = 1.5))
+  ppt <- ph_with(ppt, value = texto_con_info, location = ph_location(left = 7, top = 1.5))
+  
+  # Crear el dataframe de la tabla (Ejemplo)
+  df1 <- resumen[1:10,]
+  df2 <- resumen[11:20,]
+  
+  # Crear las dos tablas con flextable
+  tabla1 <- flextable(df1) %>% theme_vanilla()  %>% autofit()
+  tabla2 <- flextable(df2) %>% theme_vanilla()  %>% autofit()
+  
+  # Insertar las tablas lado a lado
+  ppt <- ph_with(ppt, value = tabla1, location = ph_location(left = 0.5, top = 2.5, width = 4.5, height = 3)) 
+  ppt <- ph_with(ppt, value = tabla2, location = ph_location(left = 5, top = 2.5, width = 4.5, height = 3)) 
+  
+  # Agregar logos en las esquinas (ajusta las rutas de las imágenes)
+  ruta_logo_sup <- logo_path
+  ruta_logo_inf <- logo_path
+  
+  ppt <- ph_with(ppt, value = external_img(ruta_logo_sup, width = 1.5, height = 1),
+                 location = ph_location(left = 0.2, top = 0.2))
+  
+  ppt <- ph_with(ppt, value = external_img(ruta_logo_inf, width = 1.5, height = 1),
+                 location = ph_location(left = 8, top = 6.5))
+  
+  # Guardar la presentación
+  # print(ppt, target = "Resumen_Estadistico.pptx")
+  
+  
+  
+  # ppt <- read_pptx(paste0(DIRECTORIO_PPT,"plantilla.pptx"))
+  # layout_summary(ppt)
+  # 
+  # # Verificar los nombres de los placeholders disponibles en la diapositiva "Title Slide"
+  # # layout_info <- layout_properties(ppt, layout = "Diapositiva de título", master = "Tema de Office")
+  # # print(layout_info)  # Imprime los tipos de placeholders disponibles
+  # # layout_info <- layout_properties(ppt, layout = "Título y texto vertical", master = "Tema de Office")
+  # # print(layout_info)  # Imprime los tipos de placeholders disponibles
+  # 
+  # # Crear la primera diapositiva con título y logo
+  # ppt <- ppt %>%
+  #   add_slide( layout = "Diapositiva de título", master = "Tema de Office") %>%
+  #   ph_with(value = paste("Análisis colonias para la sucursal: ",SUCURSALES[i]), 
+  #           location = ph_location_type(type = "ctrTitle")) %>%
+  #   ph_with(value = "Reporte generado en RStudio con officer y flextable",
+  #           location = ph_location_type(type = "subTitle")) %>%
+  #   ph_with(external_img(logo_path),
+  #           location = ph_location(left = 11, top = 6, width = 2, height = 1))  # Ajusta el tamaño aquí
+  # 
+  # ppt <- ppt %>%
+  #   add_slide( layout = "Título y texto vertical", master = "Tema de Office") %>%
+  #   ph_with(value = paste("Análisis colonias para la sucursal: ",SUCURSALES[i]), 
+  #           location = ph_location_type(type = "ctrTitle")) %>%
+  #   ph_with(value = "Reporte generado en RStudio con officer y flextable",
+  #           location = ph_location_type(type = "subTitle")) %>%
+  #   ph_with(external_img(logo_path),
+  #           location = ph_location(left = 11, top = 6, width = 2, height = 1))  # Ajusta el tamaño aquí
+  # 
+  # # Función para agregar diapositivas con logo y texto
+  # add_slide_with_logo <- function(ppt, title, text) {
+  #   ppt <- ppt %>% add_slide( layout = "Título y texto vertical", master = "Tema de Office") %>%
+  #     ph_with(value = fpar(ftext(title, prop = fp_text(bold = TRUE, font.size = 20))),
+  #             location = ph_location_type(type = "title")) %>%
+  #     ph_with(value = fpar(ftext(text, prop = fp_text(font.size = 14))),
+  #             location = ph_location_type(type = "body")) %>%
+  #     ph_with(external_img(logo_path),
+  #             location = ph_location(left = 11, top = 6, width = 2, height = 1))
+  #   return(ppt)
+  # }
+  # 
+  # # Resumen estadístico
+  # ppt <-  add_slide_with_logo(ppt, "Resumen Estadístico", "Aquí se muestran estadísticas básicas de las variables más relevantes.") %>%
+  #   ph_with(value = flextable(resumen[1:10,]) %>% autofit(),
+  #           location = ph_location_type(type = "body"))
+  # 
+  # # # Gráfico de datos
+  # # ppt <- add_slide_with_logo(ppt, "Gráfico: Cantidad de entregas", "Este gráfico muestra la cantidad de entregas por colonia.") %>%
+  #   # ph_with(value = external_img(grafico_path, height = 4, width = 6), location = ph_location_type(type = "body"))
+  # # Obtener dimensiones de la diapositiva
+  # ppt_size <- slide_size(ppt)
+  # 
+  # # Definir proporción de la imagen (porcentaje de la diapositiva)
+  # img_width <- ppt_size$width * 0.8  # 80% del ancho de la diapositiva
+  # img_height <- ppt_size$height * 0.6  # 60% del alto de la diapositiva
+  # 
   # ppt <- add_slide_with_logo(ppt, "Gráfico: Cantidad de entregas", "Este gráfico muestra la cantidad de entregas por colonia.") %>%
-    # ph_with(value = external_img(grafico_path, height = 4, width = 6), location = ph_location_type(type = "body"))
-  # Obtener dimensiones de la diapositiva
-  ppt_size <- slide_size(ppt)
-  
-  # Definir proporción de la imagen (porcentaje de la diapositiva)
-  img_width <- ppt_size$width * 0.8  # 80% del ancho de la diapositiva
-  img_height <- ppt_size$height * 0.6  # 60% del alto de la diapositiva
-  
-  ppt <- add_slide_with_logo(ppt, "Gráfico: Cantidad de entregas", "Este gráfico muestra la cantidad de entregas por colonia.") %>%
-    ph_with(value = external_img(grafico_path, height = img_height, width = img_width), 
-            location = ph_location(left = (ppt_size$width - img_width) / 2, 
-                                   top = (ppt_size$height - img_height) / 2, 
-                                   width = img_width, height = img_height))
-
-  # Guardar el PowerPoint
+  #   ph_with(value = external_img(grafico_path, height = img_height, width = img_width), 
+  #           location = ph_location(left = (ppt_size$width - img_width) / 2, 
+  #                                  top = (ppt_size$height - img_height) / 2, 
+  #                                  width = img_width, height = img_height))
+  # 
+  # # Guardar el PowerPoint
   print(ppt, target = archivo_ppt)
 }
 
