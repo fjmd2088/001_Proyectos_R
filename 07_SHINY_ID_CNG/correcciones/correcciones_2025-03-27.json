@@ -1,0 +1,32 @@
+[
+  {
+    "CNG": "CNSPE",
+    "tipo_infra": "CE-SP",
+    "ID_2024": "CE-SP_32000E1323",
+    "Ent": "ZACATECAS",
+    "Mun": "FRESNILLO",
+    "latitud_original": "23.15444",
+    "longitud_original": "-102.84976",
+    "nom_mun_corregido": "PRUEBA MUNICIPIO",
+    "nom_infra_corregido": "PRUEBA NOMBRE",
+    "latitud_corregido": 23.1544,
+    "longitud_corregido": -102.8498,
+    "estatus_corregido": "ACTIVO",
+    "fecha_correccion": "2025-03-27 10:47:01",
+    "usuario": "usuario_app"
+  },
+  {
+    "CNG": "CNSPE",
+    "tipo_infra": "CE-SP",
+    "ID_2024": "CE-SP_32000E1323",
+    "Ent": "ZACATECAS",
+    "Mun": "FRESNILLO",
+    "latitud_original": "23.15444",
+    "longitud_original": "-102.84976",
+    "nom_mun_corregido": "",
+    "nom_infra_corregido": "",
+    "estatus_corregido": "ACTIVO",
+    "fecha_correccion": "2025-03-27 10:47:14",
+    "usuario": "usuario_app"
+  }
+]

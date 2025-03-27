@@ -801,6 +801,9 @@ server <- function(input, output, session) {
     # Cambiar estado a "en progreso" ANTES de cualquier operación
     save_status("in_progress")
     
+    # Deshabilitar el botón de guardar mientras se procesa
+    shinyjs::disable("guardar_correccion")
+    
     # Guardar los datos corregidos en valores reactivos
     valores$registro_corregido <- list(
       cve_mun = input$correccion_cve_mun,
@@ -849,10 +852,10 @@ server <- function(input, output, session) {
     # Ejecutar el proceso de guardado usando withProgress
     withProgress(message = 'Guardando corrección', value = 0, {
       
-      # Agregar a la base de datos de correcciones
+      # Agregar a la base de datos de correcciones (local)
       datos_corregidos <<- rbind(datos_corregidos, nueva_correccion)
       
-      # Guardar en archivo
+      # Guardar en archivo local
       tryCatch({
         
         # Crear directorio si no existe
@@ -872,89 +875,94 @@ server <- function(input, output, session) {
         incProgress(0.2, detail = "Actualizando base de datos...")
         
         tryCatch({
-          # Crear directorio results si no existe
-          if (!dir.exists("results")) {
-            dir.create("results")
+          # Actualizar en la base de datos Oracle
+          
+          # 1. Actualizar la tabla TR_INFRAESTRUCTURA_PRUEBAS
+          incProgress(0.1, detail = "Actualizando tabla de infraestructura...")
+          
+          # Cargar la conexión desde el archivo externo
+          source("conexion_oracle.R")
+          
+          query_update <- paste0("UPDATE TR_INFRAESTRUCTURA_PRUEBAS SET 
+                                  CVE_MUN = '", input$correccion_cve_mun, "',
+                                  NOM_MUN = '", input$correccion_nom_mun, "',
+                                  NOM_INFRAESTRUCTURA = '", input$correccion_nom_infra, "',
+                                  LATITUD = ", input$correccion_latitud, ",
+                                  LONGITUD = ", input$correccion_longitud, ",
+                                  ESTATUS = '", input$correccion_estatus, "',
+                                  FECHA_ACTUALIZACION = SYSDATE,
+                                  USUARIO_ACTUALIZACION = 'usuario_app'
+                                  WHERE ID_INEGI_2024 = '", fila_of$ID_2024, "'")
+          
+          result_update <- dbSendUpdate(conexion, query_update)
+          
+          if (result_update == 0) {
+            showNotification("No se encontró el registro para actualizar en Oracle", 
+                             type = "warning", duration = NULL)
           }
           
-          # Cargar DB_infraestructuras.xlsx
+          # 2. Eliminar el registro de la tabla TR_INCONSISTENCIAS_PRUEBAS
+          incProgress(0.2, detail = "Eliminando inconsistencia...")
           
+          query_delete <- paste0("DELETE FROM TR_INCONSISTENCIAS_PRUEBAS 
+                                  WHERE ID_INEGI_2024 = '", fila_of$ID_2024, "'")
           
+          result_delete <- dbSendUpdate(conexion, query_delete)
           
-          db_path <- paste0(RUTA_DATABASE, "DB_infraestructuras.xlsx")
-          db_infra <- openxlsx::read.xlsx(db_path)
-          
-          incProgress(0.2, detail = "Actualizando registros...")
-          
-          # Buscar la fila con el ID_2024 correspondiente
-          idx <- which(db_infra$ID_INEGI_2024 == fila_of$ID_2024)
-          
-          if (length(idx) > 0) {
-            # Actualizar los valores en la fila correspondiente
-            db_infra$id_inegi_2025[idx] <- fila_of$ID_2024
-            db_infra$cve_mun[idx] <- input$correccion_cve_mun
-            db_infra$nom_mun[idx] <- input$correccion_nom_mun
-            db_infra$nom_infraestructura[idx] <- input$correccion_nom_infra
-            db_infra$latitud[idx] <- input$correccion_latitud
-            db_infra$longitud[idx] <- input$correccion_longitud
-            db_infra$estatus[idx] <- input$correccion_estatus
-            
-            # Guardar el archivo actualizado con la fecha
-            # fecha_archivo <- format(Sys.Date(), "%Y-%m-%d")
-            # output_path <- paste0("results/DB_infraestructuras_", fecha_archivo, ".xlsx")
-            
-            # openxlsx::write.xlsx(db_infra, output_path)
-            
-            incProgress(0.2, detail = "Completando...")
-            
-            showNotification(
-              paste("Base de datos actualizada correctamente y guardada en:", output_path), 
-              type = "message"
-            )
+          if (result_delete == 0) {
+            showNotification("No se encontró inconsistencia para eliminar", 
+                             type = "warning")
           } else {
-            showNotification(
-              paste("No se encontró el ID_2024:", fila_of$ID_2024, "en DB_infraestructuras.xlsx"), 
-              type = "warning"
-            )
+            showNotification(paste("Se eliminó la inconsistencia para ID:", fila_of$ID_2024), 
+                             type = "message")
           }
+          
+          # Verificar que todo haya funcionado correctamente
+          incProgress(0.2, detail = "Verificando cambios...")
+          
+          # Cambiar estado a "completado"
+          save_status("completed")
+          
+          showNotification("Corrección guardada exitosamente en Oracle", type = "message")
+          
+          # Limpiar los campos de entrada
+          updateNumericInput(session, "correccion_cve_mun", value = NA)
+          updateTextInput(session, "correccion_nom_mun", value = "")
+          updateTextInput(session, "correccion_nom_infra", value = "")
+          updateNumericInput(session, "correccion_latitud", value = NA)
+          updateNumericInput(session, "correccion_longitud", value = NA)
+          updateSelectInput(session, "correccion_estatus", selected = character(0))
+          
+          # Mantener el botón de guardar deshabilitado
+          shinyjs::disable("guardar_correccion")
+          
+          # Actualizar la interfaz para reflejar que el registro ya está corregido
+          # Opcional: Puedes ocultar completamente el panel de edición
+          # shinyjs::hide("panel_edicion")
+          
         }, error = function(e) {
-          showNotification(
-            paste("Error al actualizar DB_infraestructuras:", e$message), 
-            type = "error", 
-            duration = NULL
-          )
+          showNotification(paste("Error en base de datos Oracle:", e$message), 
+                           type = "error", duration = NULL)
+          
+          # Reactivar el botón de guardar en caso de error
+          shinyjs::enable("guardar_correccion")
+          
+          # Restablecer estado en caso de error
+          save_status("not_started")
         })
         
-        # Cambiar estado a "completado"
-        save_status("completed")
-        
-        showNotification("Corrección guardada exitosamente", type = "message")
-        
-        # AÑADIR ESTE CÓDIGO PARA LIMPIAR LOS CAMPOS DE ENTRADA:
-        updateNumericInput(session, "correccion_cve_mun", value = NA)
-        updateTextInput(session, "correccion_nom_mun", value = "")
-        updateTextInput(session, "correccion_nom_infra", value = "")
-        updateNumericInput(session, "correccion_latitud", value = NA)
-        updateNumericInput(session, "correccion_longitud", value = NA)
-        updateSelectInput(session, "correccion_estatus", selected = character(0))
-        
-        
       }, error = function(e) {
-        showNotification(paste("Error al guardar corrección:", e$message), 
+        showNotification(paste("Error al guardar corrección local:", e$message), 
                          type = "error", duration = NULL)
+        
+        # Reactivar el botón de guardar en caso de error
+        shinyjs::enable("guardar_correccion")
         
         # Restablecer estado en caso de error
         save_status("not_started")
-        
       })
     })
-    
-    
-    
-    
-    
   })
-  
   # Cancelar corrección ----------------------------------------------------------------------------
   observeEvent(input$cancelar_correccion, {
     valores$mostrar_card_corregida <- FALSE
