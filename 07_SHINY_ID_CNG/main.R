@@ -777,7 +777,25 @@ server <- function(input, output, session) {
         # Campos de entrada para la corrección
         numericInput("correccion_cve_mun", "Clave Municipio:", value = fila_of$cve_mun),
         textInput("correccion_nom_mun", "Nombre Municipio:", value = fila_of$nom_mun),
-        textInput("correccion_nom_infra", "Nombre Infraestructura:", value = fila_of$nom_infra),
+        # textInput("correccion_nom_infra", "Nombre Infraestructura:", value = fila_of$nom_infra),
+        # Reemplaza la línea de textInput por esto
+        div(
+          tags$label(
+            "Nombre Infraestructura:",
+            tooltip(
+              bsicons::bs_icon("info-circle"),
+              "Solo se permiten letras mayúsculas, números y espacios simples. No se permiten caracteres especiales, acentos o dobles espacios.",
+              placement = "right"
+            )
+          ),
+          textAreaInput(
+            "correccion_nom_infra",
+            label = NULL,
+            value = fila_of$nom_infra,
+            height = "100px",
+            resize = "vertical"
+          )
+        ),
         numericInput("correccion_latitud", "Latitud:", value = fila_of$latitud, max = 50),
         numericInput("correccion_longitud", "Longitud:", value = fila_of$longitud),
         selectInput("correccion_estatus", "Estatus:", 
@@ -795,6 +813,22 @@ server <- function(input, output, session) {
     )
   })
   
+  # Agregar este código en la sección del servidor
+  observeEvent(input$correccion_nom_infra, {
+    # Obtener el valor actual
+    current_value <- input$correccion_nom_infra
+    
+    # Aplicar las transformaciones
+    transformed_value <- toupper(current_value)  # Convierte a mayúsculas
+    transformed_value <- gsub("[^A-ZÑ0-9 ]", "", transformed_value)  # Elimina caracteres especiales
+    transformed_value <- gsub("  ", " ", transformed_value)  # Reemplaza múltiples espacios con uno solo
+    # transformed_value <- trimws(transformed_value)  # Elimina espacios al inicio y final
+    
+    # Si es diferente al valor original, actualiza el input
+    if(transformed_value != current_value) {
+      updateTextInput(session, "correccion_nom_infra", value = transformed_value)
+    }
+  })
   # Guardar corrección------------------------------------------------------------------------------
   observeEvent(input$guardar_correccion, {
     
