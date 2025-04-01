@@ -777,7 +777,7 @@ server <- function(input, output, session) {
         # Campos de entrada para la corrección
         numericInput("correccion_cve_mun", "Clave Municipio:", value = fila_of$cve_mun),
         textInput("correccion_nom_mun", "Nombre Municipio:", value = fila_of$nom_mun),
-        # textInput("correccion_nom_infra", "Nombre Infraestructura:", value = fila_of$nom_infra),
+        
         # Reemplaza la línea de textInput por esto
         div(
           tags$label(
@@ -796,8 +796,33 @@ server <- function(input, output, session) {
             resize = "vertical"
           )
         ),
-        numericInput("correccion_latitud", "Latitud:", value = fila_of$latitud, max = 50),
-        numericInput("correccion_longitud", "Longitud:", value = fila_of$longitud),
+        # Para latitud
+        div(
+          tags$label(
+            "Latitud:",
+            tooltip(
+              bsicons::bs_icon("info-circle"),
+              "Rango permitido: 11.9686 a 32.7184, con 6 decimales máximo",
+              placement = "right"
+            )
+          ),
+          textInput("correccion_latitud", label = NULL,
+                   value = as.character(fila_of$latitud))
+        ),
+        
+        # Para longitud
+        div(
+          tags$label(
+            "Longitud:",
+            tooltip(
+              bsicons::bs_icon("info-circle"),
+              "Rango permitido: -122.1703 a -84.6417, con 6 decimales máximo",
+              placement = "right"
+            )
+          ),
+          textInput("correccion_longitud", label = NULL,
+                    value = as.character(fila_of$longitud))
+        ),
         selectInput("correccion_estatus", "Estatus:", 
                     choices = c("ACTIVO", "INACTIVO"),
                     selected = fila_of$estatus),
@@ -822,11 +847,77 @@ server <- function(input, output, session) {
     transformed_value <- toupper(current_value)  # Convierte a mayúsculas
     transformed_value <- gsub("[^A-ZÑ0-9 ]", "", transformed_value)  # Elimina caracteres especiales
     transformed_value <- gsub("  ", " ", transformed_value)  # Reemplaza múltiples espacios con uno solo
-    # transformed_value <- trimws(transformed_value)  # Elimina espacios al inicio y final
     
     # Si es diferente al valor original, actualiza el input
     if(transformed_value != current_value) {
       updateTextInput(session, "correccion_nom_infra", value = transformed_value)
+    }
+  })
+  
+  # Agregar estos observadores en la sección del servidor
+  observeEvent(input$correccion_latitud, {
+    # Obtener el valor actual como texto
+    current_text <- input$correccion_latitud
+    
+    # Verificar si es un número válido y no negativo
+    valid_number <- suppressWarnings({
+      num_value <- as.numeric(current_text)
+      !is.na(num_value) && num_value >= 0
+    })
+    
+    if (valid_number) {
+      # Convertir a número
+      current_value <- as.numeric(current_text)
+      
+      # Verificar que esté en el rango
+      if (current_value < 11.9686) current_value <- 11.9686
+      if (current_value > 32.7184) current_value <- 32.7184
+      
+      # Formatear a 6 decimales
+      formatted_value <- format(round(current_value, 6), nsmall = 6)
+      
+      # Si es diferente al valor original, actualiza el input
+      if(formatted_value != current_text) {
+        updateTextInput(session, "correccion_latitud", value = formatted_value)
+      }
+    } else if (current_text == "-") {
+      # Si solo es un signo menos, eliminar
+      updateTextInput(session, "correccion_latitud", value = "")
+    } else if (current_text != "") {
+      # Si no es un número válido y no es vacío
+      # revertir a un valor predeterminado válido
+      updateTextInput(session, "correccion_latitud", value = "11.9686")
+    }
+  })
+  
+  observeEvent(input$correccion_longitud, {
+    # Obtener el valor actual como texto
+    current_text <- input$correccion_longitud
+    
+    # Verificar si es un número válido
+    valid_number <- suppressWarnings({
+      !is.na(as.numeric(current_text))
+    })
+    
+    if (valid_number) {
+      # Convertir a número
+      current_value <- as.numeric(current_text)
+      
+      # Verificar que esté en el rango
+      if (current_value < -122.1703) current_value <- -122.1703
+      if (current_value > -84.6417) current_value <- -84.6417
+      
+      # Formatear a 6 decimales
+      formatted_value <- format(round(current_value, 6), nsmall = 6)
+      
+      # Si es diferente al valor original, actualiza el input
+      if(formatted_value != current_text) {
+        updateTextInput(session, "correccion_longitud", value = formatted_value)
+      }
+    } else if (current_text != "-" && current_text != "") {
+      # Si no es un número válido y no es solo un signo menos o vacío
+      # revertir a un valor predeterminado válido
+      updateTextInput(session, "correccion_longitud", value = "-84.6417")
     }
   })
   # Guardar corrección------------------------------------------------------------------------------
